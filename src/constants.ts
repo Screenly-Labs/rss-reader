@@ -14,6 +14,10 @@ export const ROTATE_SECONDS = 12
 // screen never refreshes faster than the cache nor lags behind new items.
 export const FEED_CACHE_TTL_SECONDS = 3600
 
+// Cap transformed images at this width (covers 4K at viewing distance while
+// cutting oversized originals). Used by the signed /img transform route.
+export const IMAGE_MAX_WIDTH = 2560
+
 type DeployEnv = 'stage' | 'production'
 
 // Analytics IDs per environment. This is a new app, so it ships without Sentry

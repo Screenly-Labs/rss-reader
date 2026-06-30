@@ -2,15 +2,13 @@ import { Hono } from 'hono'
 import { FEED_PARAM } from '../constants'
 import { defaultFeed, getFeed } from '../feeds'
 import { decodeEntities, type FeedItem, parseFeed } from '../parse'
+import { signedImagePath } from '../sign'
 
 const feed = new Hono<{ Bindings: Env }>()
 
 const UPSTREAM_TIMEOUT_MS = 10000
 // Article fetches (for og:image) get a tighter budget than the feed itself.
 const ARTICLE_TIMEOUT_MS = 6000
-// Cap images at this width via Cloudflare Image Resizing — covers 4K viewing at
-// distance while cutting NASA-sized originals from multi-MB to a few hundred KB.
-const IMAGE_MAX_WIDTH = 2560
 
 // Some publishers reject the default Workers fetch UA or a missing Accept; send
 // a polite, identifiable UA and an RSS/Atom-friendly Accept header.
@@ -68,12 +66,16 @@ const enrichImages = async (items: FeedItem[], timeoutMs: number): Promise<void>
   )
 }
 
-// Route an image through Cloudflare Image Resizing: resized to our cap, served
-// as AVIF/WebP, edge-cached, and never upscaled (fit=scale-down). onerror falls
-// back to the original. Same-origin /cdn-cgi/image/ path — handled by the CF
-// edge, so it only works in deployed envs (not wrangler dev).
-const optimizeImageUrl = (url: string): string =>
-  `/cdn-cgi/image/width=${IMAGE_MAX_WIDTH},quality=80,format=auto,fit=scale-down,onerror=redirect/${url}`
+// Rewrite each item's image to a signed /img URL so it's resized + cached
+// server-side through our own route (no public transform endpoint). Only when a
+// signing key is configured; otherwise images are served as their originals.
+const signImages = async (items: FeedItem[], key: string): Promise<void> => {
+  await Promise.all(
+    items.map(async (item) => {
+      if (item.image) item.image = await signedImagePath(item.image, key)
+    })
+  )
+}
 
 feed.get('/', async (c) => {
   const id = c.req.query(FEED_PARAM)
@@ -108,14 +110,10 @@ feed.get('/', async (c) => {
     // Resolve real higher-res images for items that only had a thumbnail.
     await enrichImages(parsed.items, Number(c.env.FEED_TIMEOUT_MS) || ARTICLE_TIMEOUT_MS)
 
-    // Resize/optimize via Cloudflare Image Resizing — deployed envs only (the
-    // /cdn-cgi/image/ edge feature isn't available in wrangler dev).
-    if (c.env.ENV) {
-      for (const item of parsed.items) {
-        if (item.image && /^https?:\/\//.test(item.image)) {
-          item.image = optimizeImageUrl(item.image)
-        }
-      }
+    // Resize + cache images through the signed /img route. No key → serve
+    // originals (safe default; the transform route stays inert).
+    if (c.env.IMAGE_SIGNING_KEY) {
+      await signImages(parsed.items, c.env.IMAGE_SIGNING_KEY)
     }
 
     return c.json({

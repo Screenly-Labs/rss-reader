@@ -9,6 +9,13 @@ bucket = "./assets"
 # but must not be served — only the bundled main.js (built by build.ts) is.
 exclude = ["**/*.ts"]
 
+# Cloudflare Images binding — per-Worker, used by the signed /img route to resize
+# images server-side. This does NOT expose the public /cdn-cgi/image endpoint.
+# Not inherited by environments, so it is repeated under each [env.*] below; this
+# top-level one applies to plain `wrangler dev`.
+[images]
+binding = "IMAGES"
+
 [dev]
 port = 8888
 
@@ -31,6 +38,9 @@ head_sampling_rate = 1
 [env.dev]
 workers_dev = true
 
+[env.dev.images]
+binding = "IMAGES"
+
 [env.stage]
 workers_dev = false
 route = { pattern = "stage-rss.srly.io", custom_domain = true }
@@ -38,9 +48,15 @@ route = { pattern = "stage-rss.srly.io", custom_domain = true }
 [env.stage.vars]
 ENV = "stage"
 
+[env.stage.images]
+binding = "IMAGES"
+
 [env.production]
 workers_dev = false
 route = { pattern = "rss.srly.io", custom_domain = true }
 
 [env.production.vars]
 ENV = "production"
+
+[env.production.images]
+binding = "IMAGES"

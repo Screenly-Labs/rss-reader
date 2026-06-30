@@ -58,14 +58,16 @@ describe('Feed route', () => {
       <media:content url="https://img.example/big.jpg" type="image/jpeg" width="1200" />
     </item></channel></rss>`
 
-  it('routes images through Cloudflare Image Resizing in deployed envs', async () => {
+  it('signs image URLs through the /img route when a signing key is set', async () => {
     globalThis.fetch = (async () => xml(IMG_RSS)) as unknown as typeof fetch
-    const res = await call('http://localhost/?feed=nyt', { ENV: 'production' })
+    const res = await call('http://localhost/?feed=nyt', { IMAGE_SIGNING_KEY: 'testkey' })
     const item = (await res.json()).items[0]
-    expect(item.image).toMatch(/^\/cdn-cgi\/image\/.*fit=scale-down.*\/https:\/\/img\.example\/big\.jpg$/)
+    expect(item.image).toMatch(
+      /^\/img\?u=https%3A%2F%2Fimg\.example%2Fbig\.jpg&s=[A-Za-z0-9_-]+$/
+    )
   })
 
-  it('leaves image URLs untouched in dev (no ENV)', async () => {
+  it('leaves image URLs untouched when no signing key is set', async () => {
     globalThis.fetch = (async () => xml(IMG_RSS)) as unknown as typeof fetch
     const res = await call('http://localhost/?feed=nyt')
     expect((await res.json()).items[0].image).toBe('https://img.example/big.jpg')

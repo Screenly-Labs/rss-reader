@@ -62,6 +62,30 @@ namespace URI. A feed that binds the Media-RSS / Dublin Core namespace to a
 non-standard prefix would miss its image/date. Every curated feed uses the
 conventional prefixes; revisit if a future feed doesn't.
 
+### Image pipeline (resize + cache, no public transform endpoint)
+
+Images are resized/optimized **inside the Worker** via the Cloudflare Images
+binding (`env.IMAGES`), behind a **signed** route — never the public
+`/cdn-cgi/image/` endpoint.
+
+- `src/routes/feed.ts` rewrites each item image to `/img?u=<src>&s=<hmac>`
+  (`src/sign.ts`, HMAC-SHA256 of the source URL) — only when `IMAGE_SIGNING_KEY`
+  is set; otherwise originals are served (safe default).
+- `src/routes/img.ts` verifies the signature, fetches the source, resizes it
+  (`width=2560, fit=scale-down`, format from the client `Accept` → AVIF/WebP/JPEG),
+  caches the result in `caches.default`, and **falls back to the original (302)**
+  on any failure. Width/quality are fixed in code, so there's nothing to enumerate.
+- Why signed + in-Worker: the public `/cdn-cgi/image/` endpoint is unauthenticated
+  and would let anyone run (billable) transforms via the zone. This design exposes
+  no public transform surface. **Do NOT enable zone Transformations / "any origin".**
+
+**Ops to make optimization active (deployed):** the account needs Cloudflare
+Images available (the binding), and set the secret per env:
+`openssl rand -hex 32 | wrangler secret put IMAGE_SIGNING_KEY --env stage`. Local:
+put `IMAGE_SIGNING_KEY=...` in `.dev.vars` (gitignored); `wrangler dev` runs a
+low-fidelity binding (resize only — format conversion needs `--remote`), so dev
+typically 302-falls-back to originals, which is fine.
+
 ### Fit-to-canvas (the hard part) — `assets/static/js/main.ts`
 
 Signage has a **fixed canvas** (480p → 4K, both orientations) but feed content

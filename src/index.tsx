@@ -7,6 +7,7 @@ import App from './components/App'
 import { FEED_CACHE_TTL_SECONDS, FEED_PARAM } from './constants'
 import { defaultFeed, getFeed } from './feeds'
 import feed from './routes/feed'
+import img from './routes/img'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -101,5 +102,8 @@ const feedCache = cache({
 })
 app.get('/api/feed/*', (c, next) => (c.env.ENV ? feedCache(c, next) : next()))
 app.route('/api/feed', feed)
+
+// Signed image transform (resize + cache). No public /cdn-cgi/image surface.
+app.route('/img', img)
 
 export default app
