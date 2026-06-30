@@ -40,6 +40,7 @@ interface FeedResponse {
   let listSinglePage = false
   let mode: 'story' | 'list' = 'story'
   let loaded = false
+  let imgToken = 0
   let feedId = ''
   let feedTitle = ''
   let rotateMs = 12000
@@ -173,8 +174,30 @@ interface FeedResponse {
     if (!item || !stage) return
 
     stage.dataset.mode = item.image ? 'media' : 'text'
-    setBackground(imgEl, item.image)
-    setBackground(imgBackEl, item.image)
+    // Load-gate the image: keep the previous frame until the new one has
+    // decoded, so a slow/large source never paints a half-loaded or blank
+    // image. The token guards against the carousel advancing mid-load.
+    const token = ++imgToken
+    if (item.image) {
+      const pre = new Image()
+      pre.src = item.image
+      const apply = (): void => {
+        if (token !== imgToken) return // a newer slide superseded this one
+        setBackground(imgEl, item.image)
+        setBackground(imgBackEl, item.image)
+      }
+      const ready = pre.decode ? pre.decode() : Promise.reject()
+      ready.then(apply).catch(() => {
+        // decode() can reject on some hosts even when the image loads; fall back
+        // to load/error events, still token-guarded.
+        pre.onload = apply
+        pre.onerror = apply
+        if (pre.complete) apply()
+      })
+    } else {
+      setBackground(imgEl, null)
+      setBackground(imgBackEl, null)
+    }
 
     // The eyebrow shows the article's own domain (distinct from the rail's
     // curated feed name); fall back to the feed title if the link won't parse.
