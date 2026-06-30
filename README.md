@@ -1,8 +1,8 @@
 # Screenly RSS Reader
 
 A full-screen, auto-rotating **RSS / Atom / Media-RSS reader** for digital
-signage, served from a Cloudflare Worker. It shows one story at a time — image,
-source, time, headline, and as much body as the screen fits — cycling through a
+signage, served from a Cloudflare Worker. It shows one story at a time (image,
+source, time, headline, and as much body as the screen fits), cycling through a
 curated set of feeds you pick from the app store.
 
 ## How it works
@@ -30,7 +30,7 @@ Pass `?feed=<id>` (e.g. `?feed=nyt`). An unknown or missing id falls back to NPR
 
 ## Develop
 
-Bun only — no npm/npx.
+Bun only. No npm/npx.
 
 ```bash
 bun install      # install deps + vendor fonts
@@ -46,7 +46,7 @@ bun run build    # bundle/minify client assets
 - Push to `production` → deploys to **production**.
 
 Both run on Cloudflare via `wrangler-action`; set `CF_API_TOKEN` and
-`CF_ACCOUNT_ID` as repository secrets. No upstream API key is needed — every
+`CF_ACCOUNT_ID` as repository secrets. No upstream API key is needed; every
 feed is public.
 
 See [CLAUDE.md](./CLAUDE.md) for architecture and conventions.
