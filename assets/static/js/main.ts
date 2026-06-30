@@ -1,4 +1,7 @@
 import { largestFit, relativeTime } from './render'
+// The wire contract is defined once in the worker's parser. `import type` is
+// erased at build, so this pulls in no worker runtime code.
+import type { FeedItem } from '../../../src/parse'
 
 // This file is the build ENTRY. build.ts bundles it (inlining ./render) into
 // the served assets/static/js/main.js, loaded as a PLAIN classic <script>. It
@@ -6,20 +9,6 @@ import { largestFit, relativeTime } from './render'
 // helpers live in ./render (bundled in here), and this file exports nothing —
 // so the served bundle is loadable by every cached HTML variant and a deploy
 // never strands a cached page.
-
-interface FeedMedia {
-  type: 'image' | 'audio' | 'video'
-  url: string
-}
-
-interface FeedItem {
-  title: string
-  link: string
-  publishedAt: number | null
-  summary: string
-  image: string | null
-  media: FeedMedia | null
-}
 
 interface FeedResponse {
   feed?: { id: string; title: string; category: string }
@@ -30,8 +19,8 @@ interface FeedResponse {
 
 ;(() => {
   const APP_NAME = 'Screenly RSS Reader'
-  // Re-fetch on the same cadence as the edge cache (1h) so new items appear
-  // without hammering the worker.
+  // Re-fetch on the same cadence as the edge cache so new items appear without
+  // hammering the worker. Keep in sync with FEED_CACHE_TTL_SECONDS (constants.ts).
   const REFRESH_MS = 60 * 60 * 1000
   // Title may shrink to this fraction of its base size before we stop (it never
   // gets unreadably small; the summary absorbs the rest by trimming).

@@ -107,19 +107,22 @@ export const decodeEntities = (input: string): string => {
   })
 }
 
+// Module-level (the /g lastIndex resets to 0 when exec() returns null, so reuse
+// across calls is safe) to avoid recompiling the regex for every tag.
+const ATTR_RE = /([^\s=/]+)\s*=\s*("([^"]*)"|'([^']*)'|([^\s"'>]+))/g
+
 const parseTag = (raw: string): { name: string; attrs: Record<string, string> } => {
   const content = raw.trim()
   const nameMatch = /^([^\s/]+)/.exec(content)
   const name = (nameMatch ? nameMatch[1] : content).toLowerCase()
   const attrs: Record<string, string> = {}
-  const attrRe = /([^\s=/]+)\s*=\s*("([^"]*)"|'([^']*)'|([^\s"'>]+))/g
   const rest = content.slice(name.length)
-  let match = attrRe.exec(rest)
+  let match = ATTR_RE.exec(rest)
   while (match) {
     const key = match[1].toLowerCase()
     const value = match[3] ?? match[4] ?? match[5] ?? ''
     attrs[key] = decodeEntities(value)
-    match = attrRe.exec(rest)
+    match = ATTR_RE.exec(rest)
   }
   return { name, attrs }
 }
@@ -214,25 +217,26 @@ const kids = (node: XmlNode, name: string): XmlNode[] =>
 const kid = (node: XmlNode, name: string): XmlNode | undefined =>
   node.children.find((child) => child.name === name)
 
+// Index-based walk (not queue.shift(), which is O(n) per call and makes the
+// traversal O(n^2)). Order is a stack/DFS rather than BFS, which is fine — both
+// callers look up tags by name, not by tree position.
 const findDeep = (node: XmlNode, name: string): XmlNode | undefined => {
-  const queue = [...node.children]
-  while (queue.length > 0) {
-    const current = queue.shift()
-    if (!current) break
+  const stack = [...node.children]
+  for (let i = 0; i < stack.length; i++) {
+    const current = stack[i]
     if (current.name === name) return current
-    queue.push(...current.children)
+    stack.push(...current.children)
   }
   return undefined
 }
 
 const findAllDeep = (node: XmlNode, name: string): XmlNode[] => {
   const out: XmlNode[] = []
-  const queue = [...node.children]
-  while (queue.length > 0) {
-    const current = queue.shift()
-    if (!current) break
+  const stack = [...node.children]
+  for (let i = 0; i < stack.length; i++) {
+    const current = stack[i]
     if (current.name === name) out.push(current)
-    queue.push(...current.children)
+    stack.push(...current.children)
   }
   return out
 }
@@ -316,15 +320,15 @@ const isImageType = (type: string, medium: string, url: string): boolean => {
   return false
 }
 
-const mediaContents = (item: XmlNode): XmlNode[] => [
-  ...kids(item, 'media:content'),
-  ...kids(item, 'media:group').flatMap((group) => kids(group, 'media:content'))
+// media:content / media:thumbnail elements live directly on the item or grouped
+// under media:group; gather both, by tag name.
+const mediaElements = (item: XmlNode, name: string): XmlNode[] => [
+  ...kids(item, name),
+  ...kids(item, 'media:group').flatMap((group) => kids(group, name))
 ]
 
-const mediaThumbs = (item: XmlNode): XmlNode[] => [
-  ...kids(item, 'media:thumbnail'),
-  ...kids(item, 'media:group').flatMap((group) => kids(group, 'media:thumbnail'))
-]
+const mediaContents = (item: XmlNode): XmlNode[] => mediaElements(item, 'media:content')
+const mediaThumbs = (item: XmlNode): XmlNode[] => mediaElements(item, 'media:thumbnail')
 
 const pickImage = (item: XmlNode, contentHtml: string): string | null => {
   const images = mediaContents(item).filter(

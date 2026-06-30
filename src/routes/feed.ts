@@ -32,7 +32,9 @@ const fetchWithTimeout = async (url: string, timeoutMs: number): Promise<Respons
 feed.get('/', async (c) => {
   const id = c.req.query(FEED_PARAM)
   // An explicit but unknown id is a config error (surface it); a missing id
-  // falls back to the default feed so a bare URL still renders something.
+  // falls back to the default feed. In normal flow index.tsx has already
+  // canonicalized ?feed=, so the missing-id branch only matters for direct
+  // /api/feed access.
   const selected = id ? getFeed(id) : defaultFeed()
   if (!selected) return c.json({ error: true, reason: 'unknown feed' }, 404)
 

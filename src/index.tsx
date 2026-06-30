@@ -4,7 +4,7 @@ import { serveStatic } from 'hono/cloudflare-workers'
 import { logger } from 'hono/logger'
 import manifest from '__STATIC_CONTENT_MANIFEST'
 import App from './components/App'
-import { FEED_PARAM } from './constants'
+import { FEED_CACHE_TTL_SECONDS, FEED_PARAM } from './constants'
 import { defaultFeed, getFeed } from './feeds'
 import feed from './routes/feed'
 
@@ -84,9 +84,12 @@ app.get('/', async (c) => {
   return response
 })
 
-// Cache each feed's parsed JSON at the edge for 1 hour. The feed id is in the
-// query string, so every source caches separately.
-app.get('/api/feed/*', cache({ cacheName: 'default', cacheControl: 's-maxage=3600' }))
+// Cache each feed's parsed JSON at the edge (TTL shared with the client refresh
+// cadence). The feed id is in the query string, so every source caches separately.
+app.get(
+  '/api/feed/*',
+  cache({ cacheName: 'default', cacheControl: `s-maxage=${FEED_CACHE_TTL_SECONDS}` })
+)
 app.route('/api/feed', feed)
 
 export default app
