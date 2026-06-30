@@ -6,8 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A full-screen, auto-rotating **RSS / Atom / Media-RSS reader** for Screenly
 digital signage, deployed as a **Cloudflare Worker** (Hono JSX SSR at the edge).
-Sibling to the `weather-app`, `clock-app`, and `air-quality` Worker apps; closest
-to `air-quality` (the TypeScript variant it was adapted from).
+It follows the same Cloudflare Worker + Hono JSX (TypeScript) pattern used across
+our other signage apps.
 
 The screen shows one story at a time — a contained image over a blurred fill,
 the source, relative time, the headline, and **as much body text as fits** —
@@ -62,29 +62,34 @@ namespace URI. A feed that binds the Media-RSS / Dublin Core namespace to a
 non-standard prefix would miss its image/date. Every curated feed uses the
 conventional prefixes; revisit if a future feed doesn't.
 
-### Image pipeline (resize + cache, no public transform endpoint)
+### Image pipeline (resize via signed redirect)
 
-Images are resized/optimized **inside the Worker** via the Cloudflare Images
-binding (`env.IMAGES`), behind a **signed** route — never the public
-`/cdn-cgi/image/` endpoint.
+Feeds ship multi-MB originals (NASA up to 100+ MB), which never finish loading
+before a signage slide rotates — so images are width-capped/recompressed. The
+resize runs on **wsrv.nl** (images.weserv.nl), reached by a **signed 302
+redirect** from our own `/img` route.
 
 - `src/routes/feed.ts` rewrites each item image to `/img?u=<src>&s=<hmac>`
   (`src/sign.ts`, HMAC-SHA256 of the source URL) — only when `IMAGE_SIGNING_KEY`
   is set; otherwise originals are served (safe default).
-- `src/routes/img.ts` verifies the signature, fetches the source, resizes it
-  (`width=2560, fit=scale-down`, format from the client `Accept` → AVIF/WebP/JPEG),
-  caches the result in `caches.default`, and **falls back to the original (302)**
-  on any failure. Width/quality are fixed in code, so there's nothing to enumerate.
-- Why signed + in-Worker: the public `/cdn-cgi/image/` endpoint is unauthenticated
-  and would let anyone run (billable) transforms via the zone. This design exposes
-  no public transform surface. **Do NOT enable zone Transformations / "any origin".**
+- `src/routes/img.ts` verifies the signature, then **302-redirects the browser**
+  to `https://wsrv.nl/?url=ssl:<src>&w=2560&we&q=80&output=webp|jpg` (format from
+  the client `Accept`; wsrv has no AVIF). wsrv resizes + CDN-caches. Only signed
+  URLs are honored, so it isn't an open redirector.
+- `assets/static/js/main.ts` **load-gates** each slide: it preloads the image and
+  only swaps the background once `img.decode()` resolves (token-guarded against
+  the carousel advancing), so a slow/large source never paints a blank/half frame.
 
-**Ops to make optimization active (deployed):** the account needs Cloudflare
-Images available (the binding), and set the secret per env:
-`openssl rand -hex 32 | wrangler secret put IMAGE_SIGNING_KEY --env stage`. Local:
-put `IMAGE_SIGNING_KEY=...` in `.dev.vars` (gitignored); `wrangler dev` runs a
-low-fidelity binding (resize only — format conversion needs `--remote`), so dev
-typically 302-falls-back to originals, which is fine.
+**Why not the in-Worker path:** the Cloudflare Images binding (`env.IMAGES`) is
+the obvious choice but isn't available in our setup. Proxying wsrv through the
+Worker doesn't work either — wsrv **403s Cloudflare Worker subrequests** — so we
+redirect the browser instead. Do NOT use the public `/cdn-cgi/image/` zone
+endpoint (unauthenticated billable transforms / open proxy).
+
+**Ops:** set the secret per env (`openssl rand -hex 32 | wrangler secret put
+IMAGE_SIGNING_KEY --env stage`); local key in `.dev.vars` (gitignored). No
+Cloudflare Images subscription needed. Edge case: sources beyond wsrv's input
+limit (~100 MB) come back broken for that one slide; everything sane is capped.
 
 ### Fit-to-canvas (the hard part) — `assets/static/js/main.ts`
 
@@ -143,9 +148,9 @@ public.
 
 Full responsiveness via one fluid `clamp(vw+vh)` root size + the JS fitter; at
 minimum it must look correct at 4K / 1080p / 720p / 800×480, in **both
-orientations** (see the Playground `docs/resolutions.md`).
+orientations**.
 
 ## Deferred / follow-ups
 
-- The app-store entry (`content/rss-reader/index.html` + a config dropdown of
-  the feed ids) in the separate `app-store` repo — not in this repo yet.
+- The app-store integration (a config dropdown of the feed ids) — lives outside
+  this repo, not wired up yet.
