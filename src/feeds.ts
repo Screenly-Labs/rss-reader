@@ -54,10 +54,54 @@ export const FEEDS: Feed[] = [
     url: 'https://news.google.com/rss/search?q=site:reuters.com+when:1d&hl=en-US&gl=US&ceid=US:en',
     category: 'general'
   },
+  { id: 'bbc-top', title: 'BBC News — Top Stories', url: 'http://feeds.bbci.co.uk/news/rss.xml', category: 'general' },
   {
     id: 'bbc-world',
     title: 'BBC News — World',
     url: 'http://feeds.bbci.co.uk/news/world/rss.xml',
+    category: 'general'
+  },
+  { id: 'bbc-uk', title: 'BBC News — UK', url: 'http://feeds.bbci.co.uk/news/uk/rss.xml', category: 'general' },
+  {
+    id: 'bbc-business',
+    title: 'BBC News — Business',
+    url: 'http://feeds.bbci.co.uk/news/business/rss.xml',
+    category: 'general'
+  },
+  {
+    id: 'bbc-politics',
+    title: 'BBC News — Politics',
+    url: 'http://feeds.bbci.co.uk/news/politics/rss.xml',
+    category: 'general'
+  },
+  {
+    id: 'bbc-tech',
+    title: 'BBC News — Technology',
+    url: 'http://feeds.bbci.co.uk/news/technology/rss.xml',
+    category: 'tech'
+  },
+  {
+    id: 'bbc-science',
+    title: 'BBC News — Science & Environment',
+    url: 'http://feeds.bbci.co.uk/news/science_and_environment/rss.xml',
+    category: 'general'
+  },
+  {
+    id: 'bbc-health',
+    title: 'BBC News — Health',
+    url: 'http://feeds.bbci.co.uk/news/health/rss.xml',
+    category: 'general'
+  },
+  {
+    id: 'bbc-entertainment',
+    title: 'BBC News — Entertainment & Arts',
+    url: 'http://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml',
+    category: 'general'
+  },
+  {
+    id: 'reddit',
+    title: 'Reddit — Front Page',
+    url: 'https://www.reddit.com/.rss',
     category: 'general'
   },
 

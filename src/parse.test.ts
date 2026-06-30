@@ -153,14 +153,42 @@ describe('parseFeed — entities, double-decode, relative URLs, xhtml', () => {
     expect(parseFeed(xml).items[0].title).toBe('São Paulo: £5 or €3 — ½ off')
   })
 
-  it('decodes entities exactly once (no double-decode)', () => {
-    // CDATA HTML with a single &amp; must render as one ampersand, not be
-    // decoded twice into something else.
+  it('decodes double-escaped HTML entities in descriptions (Fox / Google News style)', () => {
+    // Many feeds double-escape their description HTML, so entities inside it
+    // (&amp;apos; / &amp;eacute;) need a second decode after the tags are stripped.
     const xml = `<rss version="2.0"><channel><item>
       <title>T</title><link>https://e/2</link>
-      <description><![CDATA[<p>Tom &amp; Jerry &amp;amp; Co.</p>]]></description>
+      <description>&lt;p&gt;Tommy Paul&amp;apos;s caf&amp;eacute; &amp;amp; more&lt;/p&gt;</description>
     </item></channel></rss>`
-    expect(parseFeed(xml).items[0].summary).toBe('Tom & Jerry &amp; Co.')
+    expect(parseFeed(xml).items[0].summary).toBe("Tommy Paul's café & more")
+  })
+
+  it('compacts hnrss boilerplate into a points/comments line', () => {
+    const xml = `<rss version="2.0"><channel><item>
+      <title>Some Story</title><link>https://news.ycombinator.com/item?id=1</link>
+      <description>Article URL: https://x.example/a Comments URL: https://news.ycombinator.com/item?id=1 Points: 17 # Comments: 2</description>
+    </item></channel></rss>`
+    expect(parseFeed(xml).items[0].summary).toBe('17 points · 2 comments')
+  })
+
+  it('strips the " - Source" suffix and drops the echo summary for Google News', () => {
+    const xml = `<rss version="2.0"><channel><item>
+      <title>Big News - Reuters</title>
+      <link>https://news.google.com/articles/abc</link>
+      <source url="https://reuters.com">Reuters</source>
+      <description>Big News &amp;nbsp;&amp;nbsp; Reuters</description>
+    </item></channel></rss>`
+    const item = parseFeed(xml, { baseUrl: 'https://news.google.com/rss/search?q=x' }).items[0]
+    expect(item.title).toBe('Big News')
+    expect(item.summary).toBe('')
+  })
+
+  it('trims trailing read-more boilerplate from summaries', () => {
+    const xml = `<rss version="2.0"><channel><item>
+      <title>Photo Story</title><link>https://e/1</link>
+      <description><![CDATA[<p>A great photo essay. [ Read More ]</p>]]></description>
+    </item></channel></rss>`
+    expect(parseFeed(xml).items[0].summary).toBe('A great photo essay.')
   })
 
   it('resolves relative item and image URLs against the feed base', () => {
@@ -173,6 +201,42 @@ describe('parseFeed — entities, double-decode, relative URLs, xhtml', () => {
     const item = parseFeed(xml, { baseUrl: 'https://site.example/feed.xml' }).items[0]
     expect(item.link).toBe('https://site.example/news/story')
     expect(item.image).toBe('https://site.example/img/x.jpg')
+  })
+
+  it('upgrades a BBC ichef thumbnail to a large real rendition (no fetch needed)', () => {
+    const xml = `<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/"><channel><item>
+      <title>BBC</title><link>https://bbc.co.uk/news/1</link>
+      <media:thumbnail width="240" height="135"
+        url="https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/abcd/live/x.jpg" />
+    </item></channel></rss>`
+    const item = parseFeed(xml).items[0]
+    expect(item.image).toBe('https://ichef.bbci.co.uk/ace/standard/2048/cpsprodpb/abcd/live/x.jpg')
+    expect(item.lowResImage).toBeUndefined()
+  })
+
+  it('flags a generic small thumbnail as low-res (for server-side og:image upgrade)', () => {
+    const xml = `<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/"><channel><item>
+      <title>T</title><link>https://abcnews.go.com/x</link>
+      <media:thumbnail width="384" height="288" url="https://s.abcnews.com/images/x_384.jpg" />
+    </item></channel></rss>`
+    expect(parseFeed(xml).items[0].lowResImage).toBe(true)
+  })
+
+  it('drops hotlink-protected Reddit preview images', () => {
+    const xml = `<feed xmlns="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/">
+      <entry><title>R</title><link rel="alternate" href="https://reddit.com/x" />
+        <media:thumbnail url="https://external-preview.redd.it/abc.png?width=320" />
+      </entry></feed>`
+    const item = parseFeed(xml).items[0]
+    expect(item.image).toBeNull()
+  })
+
+  it('does not flag a wide media:content image', () => {
+    const xml = `<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/"><channel><item>
+      <title>Big</title><link>https://e/1</link>
+      <media:content url="https://img.example/big.jpg" type="image/jpeg" width="1200" />
+    </item></channel></rss>`
+    expect(parseFeed(xml).items[0].lowResImage).toBeUndefined()
   })
 
   it('extracts summary and image from Atom type="xhtml" content', () => {

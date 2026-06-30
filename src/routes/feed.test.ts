@@ -53,6 +53,24 @@ describe('Feed route', () => {
     expect(captured).toContain('npr.org')
   })
 
+  const IMG_RSS = `<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/"><channel><title>I</title>
+    <item><title>Pic</title><link>https://e/1</link>
+      <media:content url="https://img.example/big.jpg" type="image/jpeg" width="1200" />
+    </item></channel></rss>`
+
+  it('routes images through Cloudflare Image Resizing in deployed envs', async () => {
+    globalThis.fetch = (async () => xml(IMG_RSS)) as unknown as typeof fetch
+    const res = await call('http://localhost/?feed=nyt', { ENV: 'production' })
+    const item = (await res.json()).items[0]
+    expect(item.image).toMatch(/^\/cdn-cgi\/image\/.*fit=scale-down.*\/https:\/\/img\.example\/big\.jpg$/)
+  })
+
+  it('leaves image URLs untouched in dev (no ENV)', async () => {
+    globalThis.fetch = (async () => xml(IMG_RSS)) as unknown as typeof fetch
+    const res = await call('http://localhost/?feed=nyt')
+    expect((await res.json()).items[0].image).toBe('https://img.example/big.jpg')
+  })
+
   it('returns 404 for an unknown feed id', async () => {
     globalThis.fetch = (async () => xml(SAMPLE)) as unknown as typeof fetch
     const res = await call('http://localhost/?feed=bogus')

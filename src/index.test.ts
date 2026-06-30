@@ -150,14 +150,14 @@ describe('Feed API caching (/api/feed)', () => {
     const ctx = { waitUntil: (p: Promise<unknown>) => puts.push(p), passThroughOnException() {}, props: {} }
     const url = 'http://localhost/api/feed?feed=nyt'
 
-    const first = await app.request(url, {}, {}, ctx)
+    const first = await app.request(url, {}, { ENV: "production" }, ctx)
     expect(first.status).toBe(200)
     expect(first.headers.get('Cache-Control')).toContain('s-maxage=3600')
     expect(fetchCount).toBe(1)
 
     await runWaitUntil(puts)
 
-    const second = await app.request(url, {}, {}, ctx)
+    const second = await app.request(url, {}, { ENV: "production" }, ctx)
     expect(second.status).toBe(200)
     expect(fetchCount).toBe(1)
   })

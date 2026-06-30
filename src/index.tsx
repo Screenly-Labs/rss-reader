@@ -56,6 +56,25 @@ app.get('/', async (c) => {
     return new Response(null, { status: 302, headers: { Location: url.toString() } })
   }
 
+  const env = c.env.ENV
+  const renderPage = (): Response =>
+    new Response(
+      (<App feedId={selected.id} feedTitle={selected.title} env={env} v={ASSET_VERSION} />).toString(),
+      {
+        status: 200,
+        headers: {
+          'Cache-Control': 's-maxage=43200',
+          'Content-Type': 'text/html; charset=UTF-8'
+        }
+      }
+    )
+
+  // Only use the SSR page cache in deployed envs. In `wrangler dev` the static
+  // asset manifest isn't content-hashed, so ASSET_VERSION (the cache key) is
+  // stable across edits and the 12h cache would serve stale HTML against freshly
+  // built CSS/JS. Rendering fresh every request locally keeps dev honest.
+  if (!env) return renderPage()
+
   const pageCache = (caches as unknown as { default: Cache }).default
   // The Cache API needs a raw Request. Version the key by the deployed asset
   // bundle so each deploy busts the SSR page cache; the feed id is already part
@@ -66,18 +85,7 @@ app.get('/', async (c) => {
   let response = await pageCache.match(key)
 
   if (!response) {
-    const env = c.env.ENV
-    const body = (
-      <App feedId={selected.id} feedTitle={selected.title} env={env} v={ASSET_VERSION} />
-    ).toString()
-    response = new Response(body, {
-      status: 200,
-      headers: {
-        'Cache-Control': 's-maxage=43200',
-        'Content-Type': 'text/html; charset=UTF-8'
-      }
-    })
-
+    response = renderPage()
     c.executionCtx.waitUntil(pageCache.put(key, response.clone()))
   }
 
@@ -85,11 +93,13 @@ app.get('/', async (c) => {
 })
 
 // Cache each feed's parsed JSON at the edge (TTL shared with the client refresh
-// cadence). The feed id is in the query string, so every source caches separately.
-app.get(
-  '/api/feed/*',
-  cache({ cacheName: 'default', cacheControl: `s-maxage=${FEED_CACHE_TTL_SECONDS}` })
-)
+// cadence). The feed id is in the query string, so every source caches
+// separately. Skipped in dev (no ENV) so parser/feed edits show immediately.
+const feedCache = cache({
+  cacheName: 'default',
+  cacheControl: `s-maxage=${FEED_CACHE_TTL_SECONDS}`
+})
+app.get('/api/feed/*', (c, next) => (c.env.ENV ? feedCache(c, next) : next()))
 app.route('/api/feed', feed)
 
 export default app

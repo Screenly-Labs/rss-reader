@@ -35,6 +35,9 @@ export interface FeedItem {
   image: string | null
   // Primary attached media (audio/video enclosure, else the image), or null.
   media: FeedMedia | null
+  // Internal: set when `image` is only a small thumbnail, so the route can fetch
+  // a real higher-res image (og:image) server-side. Stripped before responding.
+  lowResImage?: boolean
 }
 
 export interface ParsedFeed {
@@ -269,14 +272,36 @@ const serialize = (node: XmlNode): string =>
     })
     .join(' ')
 
-// Strip tags + decode entities + collapse whitespace. Decodes BEFORE stripping
-// so escaped HTML (&lt;p&gt;...) is treated as markup, matching how a browser
-// renders an RSS description. Input is RAW; decode happens once here.
-export const stripHtml = (html: string): string =>
-  decodeEntities(html)
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
+// Strip tags + decode entities + collapse whitespace, producing display text.
+// Decode happens twice on purpose: many feeds (Fox, Google News, ...) ship
+// their description as DOUBLE-escaped HTML, where the first decode reveals the
+// markup (&lt;p&gt; -> <p>) and the entities INSIDE it stay escaped one level
+// (&amp;apos; -> &apos;); after stripping the tags a second decode turns those
+// into real characters (' / non-breaking space / é). Single-escaped plain text
+// (e.g. a "First &amp; Foremost" title) decodes on the first pass and the second
+// is a harmless no-op.
+export const stripHtml = (html: string): string => {
+  const stripped = decodeEntities(html).replace(/<[^>]*>/g, ' ')
+  return decodeEntities(stripped).replace(/\s+/g, ' ').trim()
+}
+
+// Trailing feed boilerplate that adds nothing on a sign.
+const BOILERPLATE: RegExp[] = [
+  /\s*\[\s*read more\s*…?\s*\]\s*$/i,
+  /\s*(continue reading|read (the )?(full )?(story|article|more))\s*[→»>]*\s*$/i,
+  /\s*the post\b.+?\bappeared first on\b.+?$/i,
+  // Reddit's "submitted by /u/x to r/y [link] [comments]" trailer.
+  /\s*submitted by\s+\/u\/[\s\S]*$/i
+]
+
+const tidyText = (text: string): string => {
+  let out = text
+  for (const re of BOILERPLATE) out = out.replace(re, '')
+  // Drop bare URLs — Reddit image posts and many feeds leave a preview/link URL
+  // as text after the tags are stripped; it's noise on a screen.
+  out = out.replace(/https?:\/\/\S+/g, ' ')
+  return out.replace(/\s+/g, ' ').trim()
+}
 
 const IMG_RE = /<img\b[^>]*\bsrc\s*=\s*("([^"]*)"|'([^']*)'|([^\s">]+))/i
 
@@ -330,7 +355,26 @@ const mediaElements = (item: XmlNode, name: string): XmlNode[] => [
 const mediaContents = (item: XmlNode): XmlNode[] => mediaElements(item, 'media:content')
 const mediaThumbs = (item: XmlNode): XmlNode[] => mediaElements(item, 'media:thumbnail')
 
-const pickImage = (item: XmlNode, contentHtml: string): string | null => {
+// Smallest image width (px) we consider "full size". Below this (e.g. BBC's
+// 240px media:thumbnail) the item is flagged lowRes so the route can fetch a
+// real higher-res image from the article's og:image.
+const MIN_FULL_WIDTH = 600
+
+interface PickedImage {
+  url: string | null
+  lowRes: boolean
+}
+
+// BBC's ichef CDN serves real renditions at the width in its path and caps at
+// the master (it 404s past it — it does NOT upscale; verified: byte size scales
+// with width). Bump the feed's 240px thumbnail to a large clean "standard"
+// rendition (no branding overlay) — real high-res with no article fetch needed.
+const ICHEF_THUMB_RE = /^(https?:\/\/ichef\.bbci\.co\.uk\/ace\/standard\/)\d{2,4}(\/cpsprodpb\/)/i
+const BBC_IMAGE_WIDTH = 2048
+const upgradeIchef = (url: string): string | null =>
+  ICHEF_THUMB_RE.test(url) ? url.replace(ICHEF_THUMB_RE, `$1${BBC_IMAGE_WIDTH}$2`) : null
+
+const pickImage = (item: XmlNode, contentHtml: string): PickedImage => {
   const images = mediaContents(item).filter(
     (node) => node.attrs.url && isImageType(node.attrs.type ?? '', node.attrs.medium ?? '', node.attrs.url)
   )
@@ -339,21 +383,29 @@ const pickImage = (item: XmlNode, contentHtml: string): string | null => {
       (a, b) =>
         Number.parseInt(b.attrs.width ?? '0', 10) - Number.parseInt(a.attrs.width ?? '0', 10)
     )
-    return images[0].attrs.url
+    const width = Number.parseInt(images[0].attrs.width ?? '0', 10)
+    return { url: images[0].attrs.url, lowRes: width > 0 && width < MIN_FULL_WIDTH }
   }
 
   const thumb = mediaThumbs(item).find((node) => node.attrs.url)
-  if (thumb) return thumb.attrs.url
+  if (thumb) {
+    // A resizable CDN (BBC ichef) gives real high-res straight from the URL.
+    const upgraded = upgradeIchef(thumb.attrs.url)
+    if (upgraded) return { url: upgraded, lowRes: false }
+    const width = Number.parseInt(thumb.attrs.width ?? '0', 10)
+    // Otherwise thumbnails are small by default; only trust a declared big width.
+    return { url: thumb.attrs.url, lowRes: width < MIN_FULL_WIDTH }
+  }
 
   const enclosure = kids(item, 'enclosure').find(
     (node) => node.attrs.url && isImageType(node.attrs.type ?? '', '', node.attrs.url)
   )
-  if (enclosure) return enclosure.attrs.url
+  if (enclosure) return { url: enclosure.attrs.url, lowRes: false }
 
   const itunes = kid(item, 'itunes:image')
-  if (itunes?.attrs.href) return itunes.attrs.href
+  if (itunes?.attrs.href) return { url: itunes.attrs.href, lowRes: false }
 
-  return firstImageInHtml(contentHtml)
+  return { url: firstImageInHtml(contentHtml), lowRes: false }
 }
 
 const pickMedia = (item: XmlNode, image: string | null): FeedMedia | null => {
@@ -393,8 +445,30 @@ const extractLink = (item: XmlNode, isAtom: boolean): string => {
   return ''
 }
 
-const normalizeItem = (item: XmlNode, isAtom: boolean, baseUrl?: string): FeedItem => {
-  const title = stripHtml(htmlOf(kid(item, 'title')))
+// hnrss puts the real content in a fixed boilerplate; turn it into a compact
+// stat line ("17 points · 2 comments") instead of dumping URLs on the screen.
+const tidyHackerNews = (summary: string): string | null => {
+  if (!/\bArticle URL:|\bComments URL:/i.test(summary)) return null
+  const stats = /points?:\s*(\d+)\b[\s\S]*?comments?:\s*(\d+)/i.exec(summary)
+  if (!stats) return ''
+  const pts = Number(stats[1])
+  const cm = Number(stats[2])
+  return `${pts} point${pts === 1 ? '' : 's'} · ${cm} comment${cm === 1 ? '' : 's'}`
+}
+
+const normalizeItem = (
+  item: XmlNode,
+  isAtom: boolean,
+  baseUrl?: string,
+  isAggregator = false
+): FeedItem => {
+  let title = stripHtml(htmlOf(kid(item, 'title')))
+  // Aggregators (Google News) append " - <Publisher>" to every title; the
+  // publisher is in <source>. Strip it so the headline reads cleanly.
+  const source = textOf(kid(item, 'source'))
+  if (source && title.endsWith(source)) {
+    title = title.slice(0, -source.length).replace(/\s*[-–—]\s*$/, '').trim()
+  }
   const link = resolveUrl(extractLink(item, isAtom), baseUrl)
 
   const dateStr = isAtom
@@ -413,17 +487,41 @@ const normalizeItem = (item: XmlNode, isAtom: boolean, baseUrl?: string): FeedIt
     (isAtom ? htmlOf(kid(item, 'summary')) : htmlOf(kid(item, 'description'))) ||
     htmlOf(kid(item, 'media:description')) ||
     contentHtml
-  const summary = clip(stripHtml(summaryHtml), 500)
+  let summary = clip(tidyText(stripHtml(summaryHtml)), 500)
+  const hn = tidyHackerNews(summary)
+  if (hn !== null) {
+    summary = hn
+  } else if (isAggregator) {
+    // Google News descriptions just repeat the title + source link — drop them.
+    summary = ''
+  }
 
-  const rawImage = pickImage(item, contentHtml)
-  const image = rawImage ? resolveUrl(rawImage, baseUrl) : null
+  const picked = pickImage(item, contentHtml)
+  let image = picked.url ? resolveUrl(picked.url, baseUrl) : null
+  // Reddit preview images are hotlink-protected (403) and won't load anywhere;
+  // drop them so the item falls back to the text/list layout.
+  if (image && /preview\.redd\.it/.test(image)) image = null
   const media = pickMedia(item, image)
 
-  return { title, link, publishedAt, summary, image, media }
+  const result: FeedItem = { title, link, publishedAt, summary, image, media }
+  // Flag a small thumbnail so the route can fetch a real higher-res image, but
+  // only when we have an article link to read og:image from.
+  if (image && picked.lowRes && link) result.lowResImage = true
+  return result
+}
+
+const isAggregatorHost = (baseUrl?: string): boolean => {
+  if (!baseUrl) return false
+  try {
+    return new URL(baseUrl).hostname === 'news.google.com'
+  } catch {
+    return false
+  }
 }
 
 export const parseFeed = (xml: string, options: ParseOptions = {}): ParsedFeed => {
   const { baseUrl, max = MAX_ITEMS } = options
+  const aggregator = isAggregatorHost(baseUrl)
   const doc = parseXml(xml)
 
   const atom = findDeep(doc, 'feed')
@@ -455,7 +553,7 @@ export const parseFeed = (xml: string, options: ParseOptions = {}): ParsedFeed =
   }
 
   const items = itemNodes
-    .map((node) => normalizeItem(node, isAtom, baseUrl))
+    .map((node) => normalizeItem(node, isAtom, baseUrl, aggregator))
     .filter((item) => item.title || item.link)
 
   // Only re-sort when EVERY item is dated. Mixed feeds (e.g. CNN ships some

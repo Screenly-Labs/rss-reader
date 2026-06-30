@@ -4,13 +4,15 @@
 // serves them at /static/fonts/. Bun owns the font versions (package.json);
 // this step vendors the exact files we ship and serve ourselves — no CDN.
 //
-// Fonts: Fraunces (display serif, "standard" axis = opsz + wght, normal +
-// italic) for the headline; Hanken Grotesk for the source/time metadata.
+// "The Wire" type system: Bricolage Grotesque (variable opsz+wght "standard"
+// axis) for headlines, Hanken Grotesk for body, Space Mono (400/700) as the
+// teletype/utility face for the wire rail, datelines, and the QR label.
 
 const FONTS = [
-  '@fontsource-variable/fraunces/files/fraunces-latin-standard-normal.woff2',
-  '@fontsource-variable/fraunces/files/fraunces-latin-standard-italic.woff2',
-  '@fontsource-variable/hanken-grotesk/files/hanken-grotesk-latin-wght-normal.woff2'
+  '@fontsource-variable/bricolage-grotesque/files/bricolage-grotesque-latin-standard-normal.woff2',
+  '@fontsource-variable/hanken-grotesk/files/hanken-grotesk-latin-wght-normal.woff2',
+  '@fontsource/space-mono/files/space-mono-latin-400-normal.woff2',
+  '@fontsource/space-mono/files/space-mono-latin-700-normal.woff2'
 ]
 const DEST_DIR = 'assets/static/fonts'
 

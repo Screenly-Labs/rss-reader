@@ -42,7 +42,7 @@ const Layout = (props: LayoutProps) => html`<!DOCTYPE html>
            the /static/fonts/* rule in index.tsx. -->
       <link
         rel="preload"
-        href="/static/fonts/fraunces-latin-standard-normal.woff2"
+        href="/static/fonts/bricolage-grotesque-latin-standard-normal.woff2"
         as="font"
         type="font/woff2"
         crossorigin

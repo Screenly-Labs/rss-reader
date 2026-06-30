@@ -20,10 +20,32 @@ const App = ({ env, feedId, feedTitle, v }: AppProps) => {
   return (
     <Layout sentryId={sentryId} gaId={gaId} v={v}>
       <main id='stage' class='stage' data-state='loading' data-mode='media'>
+        {/* Wire rail — shared masthead for both modes: RSS mark, source, a
+            teletype position counter (NN/NN encodes the rotation sequence), the
+            Screenly mark, and a transmission line that fills over each interval. */}
+        <header class='rail'>
+          <span class='rail__mark' aria-hidden='true' />
+          <span class='rail__source' id='rail-source'>
+            {feedTitle}
+          </span>
+          <span class='rail__pos' id='rail-pos' aria-hidden='true' />
+          <a
+            class='rail__brand'
+            href='https://www.screenly.io'
+            target='_blank'
+            rel='noopener noreferrer'
+            aria-label='Screenly — opens in a new tab'
+          >
+            <img src={`/static/images/screenly-logo.svg?v=${v}`} alt='Screenly' />
+          </a>
+          <span class='rail__line' aria-hidden='true'>
+            <span class='rail__fill' id='rail-fill' />
+          </span>
+        </header>
+
         <article class='story' aria-live='polite'>
           <div class='story__media'>
-            {/* Two layers cross-fade between items; the blurred copy fills any
-                letterboxing for off-aspect images. */}
+            {/* Contained image over a blurred copy that fills any letterboxing. */}
             <div class='story__img story__img--back' id='story-img-back' aria-hidden='true' />
             <div class='story__img' id='story-img' aria-hidden='true' />
           </div>
@@ -44,18 +66,21 @@ const App = ({ env, feedId, feedTitle, v }: AppProps) => {
             <p class='story__summary' id='story-summary' />
           </div>
 
-          <a
-            class='story__brand'
-            href='https://www.screenly.io'
-            target='_blank'
-            rel='noopener noreferrer'
-            aria-label='Screenly — opens in a new tab'
-          >
-            <img src={`/static/images/screenly-logo.svg?v=${v}`} alt='Screenly' />
-          </a>
-
-          <div class='story__progress' id='story-progress' aria-hidden='true' />
+          {/* QR to the article, bracketed like a wire stamp. main.ts fills
+              #story-qr-code per item; hidden when the item has no link. */}
+          <div class='qr' id='story-qr' hidden>
+            <div class='qr__frame'>
+              <div class='qr__code' id='story-qr-code' />
+            </div>
+            <span class='qr__label'>Scan ↗ read more</span>
+          </div>
         </article>
+
+        {/* Multi-item view for text-heavy feeds: main.ts fills it with as many
+            stories as fit (each with its own QR) and paginates. */}
+        <section class='list' aria-live='polite'>
+          <ul class='list__items' id='list-items' />
+        </section>
 
         <p class='status' id='status'>
           Loading {feedTitle}…

@@ -1,4 +1,5 @@
-import { largestFit, relativeTime } from './render'
+import qrcode from 'qrcode-generator'
+import { hostLabel, largestFit, relativeTime } from './render'
 // The wire contract is defined once in the worker's parser. `import type` is
 // erased at build, so this pulls in no worker runtime code.
 import type { FeedItem } from '../../../src/parse'
@@ -26,11 +27,18 @@ interface FeedResponse {
   // gets unreadably small; the summary absorbs the rest by trimming).
   const TITLE_SCALE_FLOOR = 0.62
   const TITLE_SCALE_STEP = 0.06
+  // Feeds with at least this fraction of items carrying an image get the big
+  // one-photo-at-a-time story; text-heavier feeds get the multi-item list, which
+  // packs several short stories per page.
+  const IMAGE_FEED_THRESHOLD = 0.4
 
   let items: FeedItem[] = []
-  let index = 0
-  // True once the first feed has rendered, so hourly background refreshes swap
-  // the item list in place without yanking the carousel back to story 1.
+  // In story mode: the current item index. In list mode: the start index of the
+  // NEXT page to show.
+  let pos = 0
+  let listPageStart = 0
+  let listSinglePage = false
+  let mode: 'story' | 'list' = 'story'
   let loaded = false
   let feedId = ''
   let feedTitle = ''
@@ -49,7 +57,11 @@ interface FeedResponse {
   const timeEl = byId('story-time')
   const imgEl = byId('story-img')
   const imgBackEl = byId('story-img-back')
-  const progressEl = byId('story-progress')
+  const qrEl = byId('story-qr')
+  const qrCodeEl = byId('story-qr-code')
+  const listItemsEl = byId('list-items')
+  const railSourceEl = byId('rail-source')
+  const railPosEl = byId('rail-pos')
   const statusEl = byId('status')
 
   const prefersReducedMotion = (): boolean =>
@@ -74,35 +86,33 @@ interface FeedResponse {
     el.style.backgroundImage = url ? `url("${url.replace(/"/g, '%22')}")` : ''
   }
 
-  // Build the progress dots once per feed load (capped so 60-item feeds don't
-  // produce a hairline of dots).
-  const buildProgress = (count: number): void => {
-    if (!progressEl) return
-    const dots = Math.min(count, 12)
-    const frag = document.createDocumentFragment()
-    for (let i = 0; i < dots; i++) {
-      const dot = document.createElement('span')
-      dot.className = 'dot'
-      frag.appendChild(dot)
+  // Restart the per-page entrance animation (unless reduced motion).
+  const animateIn = (): void => {
+    if (!stage) return
+    stage.classList.remove('is-in')
+    if (!prefersReducedMotion()) {
+      stage.getBoundingClientRect() // force reflow so re-adding restarts it
+      stage.classList.add('is-in')
     }
-    progressEl.replaceChildren(frag)
   }
 
-  const updateProgress = (active: number): void => {
-    if (!progressEl) return
-    const dots = progressEl.children
-    // With more items than dots, map the item index onto the dot range.
-    const activeDot = dots.length > 0 ? active % dots.length : 0
-    for (let i = 0; i < dots.length; i++) {
-      dots[i].classList.toggle('is-active', i === activeDot)
-    }
+  // Generate a QR SVG for a link. The SVG is built locally (modules only — the
+  // URL is encoded, never injected as markup).
+  const makeQrSvg = (link: string): string => {
+    const qr = qrcode(0, 'M')
+    qr.addData(link)
+    qr.make()
+    return qr.createSvgTag({ scalable: true, margin: 0 })
   }
+
+  const pad = (n: number): string => String(n).padStart(2, '0')
+
+  // ---- Story mode (one photo story at a time) -------------------------------
 
   // The fit-to-canvas pass. The panel is a fixed box (CSS height + overflow
   // hidden); we (1) shrink the title only if it alone overflows, then (2) keep
-  // the most summary words that still fit. Result: the headline is always
-  // shown, plus as much body as the screen allows — never clipped, never just
-  // the headline when there is room for more.
+  // the most summary words that still fit. The headline is always shown, plus as
+  // much body as the screen allows — never clipped, never just the headline.
   const fitPanel = (summary: string): void => {
     if (!panel || !titleEl || !summaryEl || !stage) return
 
@@ -112,8 +122,6 @@ interface FeedResponse {
     const setTitleScale = (scale: number): void => stage.style.setProperty('--title-scale', String(scale))
     const setWords = (n: number): void => {
       if (n <= 0) {
-        // No room for any body (huge headline on a tiny panel): show none rather
-        // than a stray lone ellipsis.
         summaryEl.textContent = ''
       } else if (n >= words.length) {
         summaryEl.textContent = summary
@@ -122,7 +130,6 @@ interface FeedResponse {
       }
     }
 
-    // Reset, then measure with no summary so the title is fit on its own first.
     setTitleScale(1)
     summaryEl.textContent = ''
     let scale = 1
@@ -131,7 +138,6 @@ interface FeedResponse {
       setTitleScale(scale)
     }
 
-    // Now fill the remaining space with as many summary words as fit.
     const best = largestFit(words.length, (n) => {
       setWords(n)
       return !overflows()
@@ -139,16 +145,30 @@ interface FeedResponse {
     setWords(best)
   }
 
+  // Render a QR to the article link so a viewer can scan to read more. The SVG
+  // is generated locally (modules only — the URL is encoded, never injected as
+  // markup) and sits on a white tile for reliable scanning on the dark theme.
+  const setQr = (link: string): void => {
+    if (!qrEl || !qrCodeEl) return
+    if (!link) {
+      qrEl.hidden = true
+      qrCodeEl.replaceChildren()
+      return
+    }
+    qrCodeEl.innerHTML = makeQrSvg(link)
+    qrEl.hidden = false
+  }
+
   const preloadNext = (): void => {
     if (items.length < 2) return
-    const next = items[(index + 1) % items.length]
+    const next = items[(pos + 1) % items.length]
     if (next?.image) {
       const img = new Image()
       img.src = next.image
     }
   }
 
-  const show = (i: number): void => {
+  const showStory = (i: number): void => {
     const item = items[i]
     if (!item || !stage) return
 
@@ -156,35 +176,111 @@ interface FeedResponse {
     setBackground(imgEl, item.image)
     setBackground(imgBackEl, item.image)
 
-    if (sourceEl) sourceEl.textContent = feedTitle
+    // The eyebrow shows the article's own domain (distinct from the rail's
+    // curated feed name); fall back to the feed title if the link won't parse.
+    if (sourceEl) sourceEl.textContent = hostLabel(item.link) || feedTitle
     if (timeEl) timeEl.textContent = relativeTime(item.publishedAt, Date.now())
     if (titleEl) titleEl.textContent = item.title
+    setQr(item.link)
+    if (railPosEl) railPosEl.textContent = `${pad(i + 1)} / ${pad(items.length)}`
 
-    // Retrigger the entrance animation for this item (unless reduced motion).
-    stage.classList.remove('is-in')
-    if (!prefersReducedMotion()) {
-      // Force reflow so removing + re-adding the class restarts the animation.
-      stage.getBoundingClientRect()
-      stage.classList.add('is-in')
-    }
+    animateIn()
 
-    // Fit after the new text/layout is in the DOM. Re-fit once webfonts settle,
-    // since glyph metrics change wrapping.
+    // Fit after the new text is in the DOM; re-fit once webfonts settle, since
+    // glyph metrics change wrapping.
     requestAnimationFrame(() => fitPanel(item.summary))
     if (document.fonts?.ready) {
       document.fonts.ready.then(() => fitPanel(item.summary)).catch(() => {})
     }
 
-    updateProgress(i)
     preloadNext()
   }
+
+  // ---- List mode (several short stories per page) ---------------------------
+
+  const buildListItem = (item: FeedItem, now: number): HTMLLIElement => {
+    const li = document.createElement('li')
+    li.className = 'list__item'
+
+    const body = document.createElement('div')
+    body.className = 'list__body'
+
+    const title = document.createElement('h2')
+    title.className = 'list__title'
+    title.textContent = item.title
+    body.appendChild(title)
+
+    if (item.summary) {
+      const sum = document.createElement('p')
+      sum.className = 'list__sum'
+      sum.textContent = item.summary
+      body.appendChild(sum)
+    }
+
+    const when = relativeTime(item.publishedAt, now)
+    if (when) {
+      const time = document.createElement('span')
+      time.className = 'list__time'
+      time.textContent = when
+      body.appendChild(time)
+    }
+    li.appendChild(body)
+
+    // Each row carries its own QR so any story in the list is scannable.
+    if (item.link) {
+      const qr = document.createElement('div')
+      qr.className = 'list__qr'
+      qr.innerHTML = makeQrSvg(item.link)
+      li.appendChild(qr)
+    }
+    return li
+  }
+
+  // Fill the list with items from `start`, then drop from the end until the page
+  // fits the fixed canvas. Returns how many items were shown.
+  const renderListPage = (start: number): number => {
+    if (!listItemsEl) return 0
+    const now = Date.now()
+    const frag = document.createDocumentFragment()
+    for (let i = start; i < items.length; i++) frag.appendChild(buildListItem(items[i], now))
+    listItemsEl.replaceChildren(frag)
+
+    while (
+      listItemsEl.scrollHeight > listItemsEl.clientHeight + 1 &&
+      listItemsEl.children.length > 1
+    ) {
+      const last = listItemsEl.lastElementChild
+      if (!last) break
+      listItemsEl.removeChild(last)
+    }
+    return listItemsEl.children.length
+  }
+
+  const showListPage = (): void => {
+    if (!stage) return
+    stage.dataset.mode = 'list'
+    if (pos >= items.length) pos = 0
+    const start = pos
+    const count = renderListPage(start)
+    listPageStart = start
+    listSinglePage = count >= items.length
+    pos = listSinglePage ? 0 : (start + count) % items.length
+    animateIn()
+  }
+
+  // ---- Shared rotation ------------------------------------------------------
 
   const scheduleRotate = (): void => {
     clearTimeout(rotateTimer)
     if (items.length < 2) return
+    if (mode === 'list' && listSinglePage) return // everything fits on one page
     rotateTimer = setTimeout(() => {
-      index = (index + 1) % items.length
-      show(index)
+      if (mode === 'list') {
+        showListPage()
+      } else {
+        pos = (pos + 1) % items.length
+        showStory(pos)
+      }
       scheduleRotate()
     }, rotateMs)
   }
@@ -202,21 +298,52 @@ interface FeedResponse {
     }
 
     items = data.items
-    if (data.title) feedTitle = data.title
-    if (index >= items.length) index = 0
-    buildProgress(items.length)
+    // Use the curated registry title for the source label — the feed's own
+    // <title> is sometimes ugly (Google News "site:reuters.com when:1d ...",
+    // CBS "Home - cbsnews.com"). SSR already seeded feedTitle from the registry.
+    if (data.feed?.title) feedTitle = data.feed.title
+
+    const imaged = items.filter((item) => item.image).length
+    mode = imaged / items.length >= IMAGE_FEED_THRESHOLD ? 'story' : 'list'
+
+    if (railSourceEl) railSourceEl.textContent = feedTitle
     setState('ready')
-    if (!loaded) {
-      loaded = true
-      index = 0
-      show(0)
-      scheduleRotate()
+
+    if (mode === 'list') {
+      if (railPosEl) railPosEl.textContent = `${items.length} stories`
+      // On a background refresh, re-render the page we're currently showing so
+      // the screen doesn't jump; otherwise start at the top.
+      if (loaded) {
+        renderListPage(Math.min(listPageStart, items.length - 1))
+      } else {
+        loaded = true
+        pos = 0
+        showListPage()
+        scheduleRotate()
+      }
     } else {
-      // Background refresh: keep showing the current story; the running rotation
-      // timer picks up the new list on its next tick.
-      updateProgress(index)
+      if (pos >= items.length) pos = 0
+      if (loaded) {
+        // Keep showing the current story; the running timer picks up the new list.
+        if (railPosEl) railPosEl.textContent = `${pad(pos + 1)} / ${pad(items.length)}`
+      } else {
+        loaded = true
+        pos = 0
+        showStory(0)
+        scheduleRotate()
+      }
     }
-    track('feed_loaded', { items: items.length })
+
+    track('feed_loaded', { items: items.length, mode })
+  }
+
+  const refit = (): void => {
+    if (mode === 'list') {
+      renderListPage(Math.min(listPageStart, Math.max(0, items.length - 1)))
+    } else {
+      const item = items[pos]
+      if (item) fitPanel(item.summary)
+    }
   }
 
   const fetchFeed = async (): Promise<void> => {
@@ -245,6 +372,8 @@ interface FeedResponse {
     feedTitle = data?.dataset.feedTitle ?? ''
     const seconds = Number(data?.dataset.rotateSeconds)
     if (Number.isFinite(seconds) && seconds > 0) rotateMs = seconds * 1000
+    // Drives the transmission line's fill duration (CSS animation).
+    stage?.style.setProperty('--rotate-ms', `${rotateMs}ms`)
   }
 
   const init = (): void => {
@@ -252,10 +381,7 @@ interface FeedResponse {
     fetchFeed()
     window.addEventListener('resize', () => {
       clearTimeout(resizeTimer)
-      resizeTimer = setTimeout(() => {
-        const item = items[index]
-        if (item) fitPanel(item.summary)
-      }, 150)
+      resizeTimer = setTimeout(refit, 150)
     })
   }
 
