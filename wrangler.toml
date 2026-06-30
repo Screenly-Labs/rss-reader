@@ -22,9 +22,18 @@ route = { pattern = "stage-rss.srly.io", custom_domain = true }
 [env.stage.vars]
 ENV = "stage"
 
+# Workers observability: invocation logs on, full console logs off.
+[env.stage.observability.logs]
+enabled = false
+invocation_logs = true
+
 [env.production]
 workers_dev = false
 route = { pattern = "rss.srly.io", custom_domain = true }
 
 [env.production.vars]
 ENV = "production"
+
+[env.production.observability.logs]
+enabled = false
+invocation_logs = true
