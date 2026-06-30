@@ -1,0 +1,342 @@
+/* =========================================================================
+   Screenly RSS Reader — "Front page" theme
+   A full-screen, auto-rotating story for digital signage. One item at a time:
+   a contained image over a blurred fill, a lower text band with the source,
+   relative time, headline (Fraunces) and as much body (Hanken Grotesk) as the
+   fixed canvas allows. The fit is finished in JS (main.ts): the headline always
+   shows; the summary is trimmed to fill the band without overflow. Layout is
+   fluid (one clamp() root size, vw+vh) so it works 480p -> 4K in both
+   orientations with no breakpoints — only an orientation tweak to the band size.
+   ========================================================================= */
+
+/* ---- Webfonts: self-hosted, vendored from Bun-managed @fontsource ---------
+   unicode-range scopes the Latin subset so localized text falls back to the
+   system font instead of rendering tofu. */
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/static/fonts/fraunces-latin-standard-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Fraunces";
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/static/fonts/fraunces-latin-standard-italic.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Hanken Grotesk";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/static/fonts/hanken-grotesk-latin-wght-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-meta: "Hanken Grotesk", system-ui, -apple-system, sans-serif;
+
+  --ink: #f6f3ec;
+  --ink-dim: rgb(246 243 236 / 0.82);
+  --ink-faint: rgb(246 243 236 / 0.6);
+  --accent: #e7c07c;
+  --bg: #0b0d11;
+  --bg-soft: #14171d;
+
+  /* Single fluid root size — symmetric across orientation (vw + vh). Every
+     other size is in rem, so the whole UI scales from the 800x480 Pi panel to
+     4K with no breakpoints. */
+  --root: clamp(15px, 0.62vw + 0.62vh, 46px);
+
+  /* Set per item by main.ts to shrink an over-long headline; 1 = full size. */
+  --title-scale: 1;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+}
+
+html,
+body {
+  block-size: 100%;
+}
+
+html {
+  font-size: var(--root);
+}
+
+body {
+  min-block-size: 100%;
+  color: var(--ink);
+  background-color: var(--bg);
+  font-family: var(--font-meta);
+  line-height: 1.32;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+}
+
+::selection {
+  background: var(--accent);
+  color: #11130f;
+}
+
+/* =========================================================================
+   Stage — the fixed canvas
+   ========================================================================= */
+.stage {
+  position: relative;
+  inline-size: 100vw;
+  block-size: 100svh;
+  overflow: hidden;
+  background: radial-gradient(120% 90% at 50% 0%, var(--bg-soft), var(--bg) 70%);
+  display: grid;
+}
+
+.story {
+  position: absolute;
+  inset: 0;
+}
+
+/* ---- Media: contained foreground over a blurred cover fill ----------------
+   contain shows the whole image (portrait NASA shots, wide news photos) without
+   cropping; the blurred cover layer fills the letterbox so the canvas is never
+   empty. */
+.story__media {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.story__img {
+  position: absolute;
+  inset: 0;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+.story__img--back {
+  background-size: cover;
+  filter: blur(2.2rem) brightness(0.55) saturate(1.1);
+  transform: scale(1.12);
+}
+
+/* Legibility scrim: darkens the lower band where the text sits. */
+.story__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    0deg,
+    rgb(6 7 10 / 0.94) 0%,
+    rgb(6 7 10 / 0.86) 18%,
+    rgb(6 7 10 / 0.4) 42%,
+    rgb(6 7 10 / 0) 64%
+  );
+}
+
+/* ---- Text band ------------------------------------------------------------
+   A capped, overflow-hidden box. main.ts fits content into it: the headline is
+   always visible; the summary is trimmed to fill what remains. max-height +
+   overflow:hidden is what the fitter measures against. */
+.story__panel {
+  position: absolute;
+  z-index: 2;
+  inset-inline: 0;
+  inset-block-end: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: clamp(1.1rem, 3vmin, 3.4rem);
+  padding-inline-end: clamp(1.1rem, 8vmin, 8rem); /* keep clear of the logo */
+  max-block-size: 46svh;
+  overflow: hidden;
+}
+
+.story__kicker {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.story__source {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.story__time {
+  color: var(--ink-faint);
+  letter-spacing: 0.04em;
+}
+
+.story__title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 1.04;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+  /* Fluid base * the per-item scale main.ts sets when a headline is too long. */
+  font-size: calc(clamp(1.7rem, 3.4vw + 1.4vh, 4.6rem) * var(--title-scale));
+}
+
+.story__summary {
+  color: var(--ink-dim);
+  font-size: clamp(0.95rem, 0.9vw + 0.6vh, 1.55rem);
+  line-height: 1.36;
+  text-wrap: pretty;
+}
+
+/* ---- Text-only mode (items with no image): centered editorial layout ------ */
+.stage[data-mode="text"] {
+  background: linear-gradient(160deg, var(--bg-soft), var(--bg) 78%);
+  place-items: center;
+}
+.stage[data-mode="text"] .story__media,
+.stage[data-mode="text"] .story__scrim {
+  display: none;
+}
+.stage[data-mode="text"] .story__panel {
+  position: relative;
+  margin-inline: auto;
+  inline-size: min(92%, 34rem);
+  max-block-size: 84svh;
+  padding-inline: 0;
+  text-align: center;
+  align-items: center;
+  gap: 0.9rem;
+}
+.stage[data-mode="text"] .story__kicker {
+  justify-content: center;
+}
+.stage[data-mode="text"] .story__title {
+  font-size: calc(clamp(2rem, 4.4vw + 2vh, 6rem) * var(--title-scale));
+}
+.stage[data-mode="text"] .story__summary {
+  font-size: clamp(1rem, 1vw + 0.7vh, 1.7rem);
+}
+
+/* Portrait: stories are taller, so the band can take more of the screen. */
+@media (orientation: portrait) {
+  .story__panel {
+    max-block-size: 56svh;
+    padding-inline-end: clamp(1.1rem, 4vmin, 4rem);
+  }
+}
+
+/* =========================================================================
+   Chrome — brand, progress, status
+   ========================================================================= */
+.story__brand {
+  position: absolute;
+  z-index: 3;
+  inset-block-start: clamp(0.9rem, 2.4vmin, 2.4rem);
+  inset-inline-end: clamp(0.9rem, 2.4vmin, 2.4rem);
+  opacity: 0.9;
+}
+.story__brand img {
+  block-size: clamp(0.85rem, 1.2vmin + 0.6rem, 1.7rem);
+  inline-size: auto;
+  display: block;
+  filter: drop-shadow(0 1px 6px rgb(0 0 0 / 0.6));
+}
+
+.story__progress {
+  position: absolute;
+  z-index: 3;
+  inset-block-end: clamp(0.7rem, 1.8vmin, 1.8rem);
+  inset-inline-end: clamp(0.9rem, 2.4vmin, 2.4rem);
+  display: flex;
+  gap: 0.4rem;
+}
+.story__progress .dot {
+  inline-size: 0.42rem;
+  block-size: 0.42rem;
+  border-radius: 50%;
+  background: rgb(246 243 236 / 0.32);
+  transition: background-color 0.3s ease, transform 0.3s ease;
+}
+.story__progress .dot.is-active {
+  background: var(--accent);
+  transform: scale(1.35);
+}
+
+.status {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  display: none;
+  place-content: center;
+  text-align: center;
+  padding: 2rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.1rem, 1.4vw + 1vh, 2.2rem);
+  color: var(--ink-faint);
+}
+
+/* ---- State gating --------------------------------------------------------- */
+.stage[data-state="loading"] .story,
+.stage[data-state="empty"] .story,
+.stage[data-state="error"] .story {
+  visibility: hidden;
+}
+.stage[data-state="loading"] .status,
+.stage[data-state="empty"] .status,
+.stage[data-state="error"] .status {
+  display: grid;
+}
+.stage[data-state="ready"] .status {
+  display: none;
+}
+
+/* =========================================================================
+   Motion — one entrance per item, gated behind reduced-motion
+   ========================================================================= */
+@media (prefers-reduced-motion: no-preference) {
+  .stage.is-in .story__img,
+  .stage.is-in .story__img--back {
+    animation: media-in 900ms ease both;
+  }
+  .stage.is-in .story__kicker {
+    animation: rise-in 600ms ease both;
+  }
+  .stage.is-in .story__title {
+    animation: rise-in 700ms ease 60ms both;
+  }
+  .stage.is-in .story__summary {
+    animation: rise-in 700ms ease 140ms both;
+  }
+
+  @keyframes media-in {
+    from {
+      opacity: 0;
+      transform: scale(1.04);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  @keyframes rise-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.6rem);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
