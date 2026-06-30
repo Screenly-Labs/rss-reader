@@ -1,0 +1,16 @@
+dist
+node_modules
+worker
+.dev.vars
+
+# Built client bundle (compiled from assets/static/js/main.ts by build.ts).
+assets/static/js/main.js
+.wrangler
+package-lock.json
+.cargo-ok
+
+.DS_Store
+**/.DS_Store
+
+# Output of 'npm pack'
+*.tgz

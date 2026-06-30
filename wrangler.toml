@@ -1,0 +1,46 @@
+name="screenly-rss-reader"
+main="src/index.tsx"
+compatibility_date = "2022-07-18"
+workers_dev = true
+
+[site]
+bucket = "./assets"
+# The client TypeScript source (main.ts + render.ts) lives in the assets tree
+# but must not be served — only the bundled main.js (built by build.ts) is.
+exclude = ["**/*.ts"]
+
+[dev]
+port = 8888
+
+# Workers observability — top level, inherited by all environments (stage/prod).
+[observability]
+enabled = false
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = false
+persist = true
+head_sampling_rate = 1
+
+[env.dev]
+workers_dev = true
+
+[env.stage]
+workers_dev = false
+route = { pattern = "stage-rss.srly.io", custom_domain = true }
+
+[env.stage.vars]
+ENV = "stage"
+
+[env.production]
+workers_dev = false
+route = { pattern = "rss.srly.io", custom_domain = true }
+
+[env.production.vars]
+ENV = "production"
