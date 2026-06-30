@@ -43,8 +43,8 @@ img.get('/', async (c) => {
     if (!upstream.ok || !upstream.body) return Response.redirect(u, 302)
 
     const result = await c.env.IMAGES.input(upstream.body)
-      .transform({ width: IMAGE_MAX_WIDTH, fit: 'scale-down', quality: 80 })
-      .output({ format })
+      .transform({ width: IMAGE_MAX_WIDTH, fit: 'scale-down' })
+      .output({ format, quality: 80 })
 
     const transformed = result.response()
     const response = new Response(transformed.body, transformed)

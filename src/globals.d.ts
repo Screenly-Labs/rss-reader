@@ -10,13 +10,14 @@ declare module '__STATIC_CONTENT_MANIFEST' {
 // Minimal shape of the Cloudflare Images binding we use (resize bytes we
 // fetched). Kept local so it doesn't depend on @cloudflare/workers-types globals.
 interface ImageTransformer {
+  // Mirrors @cloudflare/workers-types ImageTransform: geometry/effects only.
+  // NOTE: quality is NOT valid here — it lives on output() (ImageOutputOptions).
   transform(options: {
     width?: number
     height?: number
-    fit?: 'scale-down' | 'contain' | 'cover' | 'crop' | 'pad'
-    quality?: number
+    fit?: 'scale-down' | 'contain' | 'cover' | 'crop' | 'pad' | 'squeeze'
   }): ImageTransformer
-  output(options: { format: string }): Promise<{ response(): Response }>
+  output(options: { format: string; quality?: number }): Promise<{ response(): Response }>
 }
 interface ImagesBinding {
   input(stream: ReadableStream<Uint8Array>): ImageTransformer
