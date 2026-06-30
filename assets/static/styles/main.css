@@ -203,7 +203,9 @@ body {
 .story__img--back {
   background-size: cover;
   filter: blur(2.2rem) brightness(0.5) saturate(1.1);
-  transform: scale(1.12);
+  /* Overscan so the blur's faded edges stay off-screen (no soft gradient in the
+     letterbox). The entrance animation must not reset this scale. */
+  transform: scale(1.18);
 }
 .story__scrim {
   position: absolute;
@@ -478,9 +480,13 @@ body {
   .stage.is-in .rail__fill {
     animation: wire-fill var(--rotate-ms) linear both;
   }
-  .stage.is-in .story__img,
-  .stage.is-in .story__img--back {
+  .stage.is-in .story__img {
     animation: media-in 900ms ease both;
+  }
+  /* Back layer fades only — never animate its transform, or it would drop the
+     overscan scale and leave a soft gradient in the letterbox. */
+  .stage.is-in .story__img--back {
+    animation: fade-in 900ms ease both;
   }
   .stage.is-in .story__kicker {
     animation: rise-in 600ms ease both;
@@ -514,6 +520,14 @@ body {
     to {
       opacity: 1;
       transform: scale(1);
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
     }
   }
   @keyframes rise-in {
