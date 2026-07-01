@@ -85,6 +85,19 @@ describe('Routing', () => {
     expect(body).toContain('"source":"nyt"')
     expect(body).toContain('"source_title":"NYT"')
   })
+
+  it('escapes </script> in a feed title so it cannot break out of the GA config', () => {
+    const body = jsx(App, {
+      env: 'production',
+      feedId: 'x',
+      feedTitle: '</script><script>alert(1)</script>',
+      v: 'testver'
+    }).toString()
+    // The raw closing tag must never appear inside the inlined config object;
+    // the `<` is escaped to <, keeping the injected markup inert.
+    expect(body).not.toContain('</script><script>alert(1)')
+    expect(body).toContain('\\u003c/script\\u003e\\u003cscript\\u003e')
+  })
 })
 
 describe('Page caching (/ route)', () => {
