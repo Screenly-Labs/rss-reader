@@ -94,7 +94,8 @@ describe('Routing', () => {
       v: 'testver'
     }).toString()
     // The raw closing tag must never appear inside the inlined config object;
-    // the `<` is escaped to <, keeping the injected markup inert.
+    // each angle bracket is emitted as its JS unicode escape (asserted on the
+    // next line), so the injected markup stays inert.
     expect(body).not.toContain('</script><script>alert(1)')
     expect(body).toContain('\\u003c/script\\u003e\\u003cscript\\u003e')
   })
