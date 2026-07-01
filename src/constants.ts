@@ -20,16 +20,18 @@ export const IMAGE_MAX_WIDTH = 2560
 
 type DeployEnv = 'stage' | 'production'
 
-// Analytics IDs per environment. This is a new app, so it ships without Sentry
-// or Google Analytics wired up; fill these in (per env) to enable them. Empty
-// values mean Layout renders no Sentry/GA script tags at all. When GA is
-// enabled, main.ts tags every event with the feed `source` (see main.ts).
+// Analytics IDs per environment. Empty values mean Layout renders no Sentry/GA
+// script tags at all. When GA is enabled, both the page_view (via the config
+// call in Layout) and every main.ts event carry the feed `source` so usage
+// breaks down by which feed a screen is showing.
 export const sentryIds: Record<DeployEnv, string> = {
   stage: '',
   production: ''
 }
 
+// GA4 only runs in production so stage traffic never pollutes the property;
+// give stage its own measurement id here if you ever want to verify on stage.
 export const gaIds: Record<DeployEnv, string> = {
   stage: '',
-  production: ''
+  production: 'G-BDLWRXXW1B'
 }

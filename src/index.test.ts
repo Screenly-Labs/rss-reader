@@ -70,10 +70,20 @@ describe('Routing', () => {
     expect(body).toContain('/static/styles/main.css?v=testver')
   })
 
-  it('omits Sentry / GA script tags when no analytics IDs are configured', () => {
-    const body = jsx(App, { env: 'production', feedId: 'nyt', feedTitle: 'NYT', v: 'testver' }).toString()
+  it('omits Sentry / GA script tags for an env with no analytics IDs (stage)', () => {
+    const body = jsx(App, { env: 'stage', feedId: 'nyt', feedTitle: 'NYT', v: 'testver' }).toString()
     expect(body).not.toContain('sentry-cdn.com')
     expect(body).not.toContain('googletagmanager.com')
+  })
+
+  it('loads GA in production and attributes the page_view to the feed source', () => {
+    const body = jsx(App, { env: 'production', feedId: 'nyt', feedTitle: 'NYT', v: 'testver' }).toString()
+    expect(body).toContain('googletagmanager.com/gtag/js?id=G-BDLWRXXW1B')
+    // The feed rides along on the config call so GA4's automatic page_view is
+    // attributed to it — not just the later custom events from main.ts.
+    expect(body).toContain("gtag('config', 'G-BDLWRXXW1B'")
+    expect(body).toContain('"source":"nyt"')
+    expect(body).toContain('"source_title":"NYT"')
   })
 })
 
