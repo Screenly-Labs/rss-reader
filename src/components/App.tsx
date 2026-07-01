@@ -18,7 +18,7 @@ const App = ({ env, feedId, feedTitle, v }: AppProps) => {
   const sentryId = env ? sentryIds[env] : ''
   const gaId = env ? gaIds[env] : ''
   return (
-    <Layout sentryId={sentryId} gaId={gaId} v={v}>
+    <Layout sentryId={sentryId} gaId={gaId} feedId={feedId} feedTitle={feedTitle} v={v}>
       <main id='stage' class='stage' data-state='loading' data-mode='media'>
         {/* Wire rail — shared masthead for both modes: RSS mark, source, a
             teletype position counter (NN/NN encodes the rotation sequence), the

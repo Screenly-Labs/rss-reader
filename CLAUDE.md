@@ -140,9 +140,17 @@ public.
 - `build.ts` minifies CSS **in place**, don't commit minified CSS.
 - Tests stub the Cloudflare-only `__STATIC_CONTENT_MANIFEST` and
   `hono/cloudflare-workers`, and stub the Cache API (see `src/index.test.ts`).
-- Analytics ship disabled (empty `sentryIds`/`gaIds`). When GA is enabled,
-  `main.ts` tags **every event with the feed `source`** (id + title) so usage
-  can be broken down by feed.
+- Analytics: GA4 is on in **production only** (`gaIds.production` in
+  `constants.ts`; `stage` is empty so stage traffic never pollutes the property).
+  The feed rides along on the GA4 automatic `page_view` (the `source` /
+  `source_title` passed to the `gtag('config', …)` call in `Layout.tsx`), and
+  `main.ts` tags **every later event with the same feed `source`** (id + title),
+  so both visits and interactions break down by feed. Since the feed lives in the
+  `?feed=` query string, GA's default *Page path* strips it — the explicit
+  `source` param is what makes feed a first-class dimension. **GA-side setup:**
+  register `source` and `source_title` as event-scoped **custom dimensions**
+  (GA4 → Admin → Custom definitions) or they're collected but not selectable in
+  reports.
 
 ## Supported resolutions
 

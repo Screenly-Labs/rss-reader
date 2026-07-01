@@ -70,10 +70,34 @@ describe('Routing', () => {
     expect(body).toContain('/static/styles/main.css?v=testver')
   })
 
-  it('omits Sentry / GA script tags when no analytics IDs are configured', () => {
-    const body = jsx(App, { env: 'production', feedId: 'nyt', feedTitle: 'NYT', v: 'testver' }).toString()
+  it('omits Sentry / GA script tags for an env with no analytics IDs (stage)', () => {
+    const body = jsx(App, { env: 'stage', feedId: 'nyt', feedTitle: 'NYT', v: 'testver' }).toString()
     expect(body).not.toContain('sentry-cdn.com')
     expect(body).not.toContain('googletagmanager.com')
+  })
+
+  it('loads GA in production and attributes the page_view to the feed source', () => {
+    const body = jsx(App, { env: 'production', feedId: 'nyt', feedTitle: 'NYT', v: 'testver' }).toString()
+    expect(body).toContain('googletagmanager.com/gtag/js?id=G-BDLWRXXW1B')
+    // The feed rides along on the config call so GA4's automatic page_view is
+    // attributed to it — not just the later custom events from main.ts.
+    expect(body).toContain("gtag('config', 'G-BDLWRXXW1B'")
+    expect(body).toContain('"source":"nyt"')
+    expect(body).toContain('"source_title":"NYT"')
+  })
+
+  it('escapes </script> in a feed title so it cannot break out of the GA config', () => {
+    const body = jsx(App, {
+      env: 'production',
+      feedId: 'x',
+      feedTitle: '</script><script>alert(1)</script>',
+      v: 'testver'
+    }).toString()
+    // The raw closing tag must never appear inside the inlined config object;
+    // each angle bracket is emitted as its JS unicode escape (asserted on the
+    // next line), so the injected markup stays inert.
+    expect(body).not.toContain('</script><script>alert(1)')
+    expect(body).toContain('\\u003c/script\\u003e\\u003cscript\\u003e')
   })
 })
 
