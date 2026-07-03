@@ -47,10 +47,11 @@ app.use('/static/*', serveStatic({ root: './', manifest }))
 // The self-describing app manifest, served at a stable well-known path. The app
 // store and signage players fetch this cross-origin, so it must carry
 // `Access-Control-Allow-Origin: *` and stay anonymously reachable. See
-// src/manifest.ts and ../../app-store/docs/app-manifest.md.
+// src/manifest.ts and `docs/app-manifest.md` in the sibling
+// `Screenly-Labs/app-store` repo.
 app.get('/.well-known/signage-app.json', (c) => {
   c.header('Access-Control-Allow-Origin', '*')
-  c.header('Cache-Control', 'public, max-age=3600')
+  c.header('Cache-Control', `public, max-age=${FEED_CACHE_TTL_SECONDS}`)
   return c.json(appManifest)
 })
 

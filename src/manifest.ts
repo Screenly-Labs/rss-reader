@@ -1,9 +1,9 @@
 // The self-describing signage-app manifest. Served verbatim (as JSON) from
 // /.well-known/signage-app.json so the Screenly app store can render this app's
 // config page and signage players can consume its settings directly, instead of
-// anyone re-implementing the settings form by hand. See the spec at
-// ../../app-store/docs/app-manifest.md and validate against
-// ../../app-store/static/schemas/signage-app-manifest.schema.json.
+// anyone re-implementing the settings form by hand. See the spec in the sibling
+// `Screenly-Labs/app-store` repo (`docs/app-manifest.md`) and validate against
+// its `static/schemas/signage-app-manifest.schema.json`.
 //
 // This is a STEPPED app: it self-advances through one story at a time and loops
 // forever. The dwell per step (ROTATE_SECONDS) and the item count (MAX_ITEMS)
