@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, mock } from 'bun:test'
 import { jsx } from 'hono/jsx'
 import App from './components/App'
+import { DEFAULT_FEED_ID, FEEDS } from './feeds'
 
 // The Cloudflare static-assets middleware and its build-time manifest only
 // exist in the Workers runtime; stub both before importing the app.
@@ -153,6 +154,36 @@ describe('Static asset caching (/static/*)', () => {
   it('caches fonts immutably even though their @font-face URLs are unversioned', async () => {
     const font = await app.request('http://localhost/static/fonts/fraunces-latin-standard-normal.woff2')
     expect(font.headers.get('Cache-Control')).toBe('public, max-age=31536000, immutable')
+  })
+})
+
+describe('App manifest (/.well-known/signage-app.json)', () => {
+  it('serves the manifest as JSON, cross-origin, anonymously', async () => {
+    const res = await app.request('http://localhost/.well-known/signage-app.json')
+    expect(res.status).toBe(200)
+    // The store and players fetch this cross-origin, so CORS must be open.
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*')
+    expect(res.headers.get('Content-Type')).toContain('application/json')
+
+    const body = (await res.json()) as Record<string, unknown>
+    expect(body.manifestVersion).toBe('1')
+    expect(body.id).toBe('rss')
+    // Stepped app: it self-advances through the feed's stories and loops forever.
+    expect((body.playback as { pacing: string; loops: boolean }).pacing).toBe('stepped')
+    // The launch template explodes the one setting into ?feed=<id>, the exact
+    // param the worker resolves on the / route.
+    expect((body.launch as { baseUrl: string; template: string }).template).toBe('{?feed}')
+
+    // The only setting is the curated feed id; its enum, labels and default must
+    // stay in lockstep with src/feeds.ts (the single source of truth) so the
+    // config dropdown can never offer an id the worker would reject.
+    const feed = (body.settings as { properties: Record<string, Record<string, unknown>> }).properties
+      .feed
+    expect(feed).toBeDefined()
+    expect(feed['x-widget']).toBe('select')
+    expect(feed.enum).toEqual(FEEDS.map((f) => f.id))
+    expect(feed['x-enumLabels']).toEqual(FEEDS.map((f) => f.title))
+    expect(feed.default).toBe(DEFAULT_FEED_ID)
   })
 })
 
