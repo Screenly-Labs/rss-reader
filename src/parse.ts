@@ -49,6 +49,10 @@ export interface ParseOptions {
   // The feed's own URL, used to resolve relative item/image links.
   baseUrl?: string
   max?: number
+  // Bespoke handling for feeds that don't fit the generic shape. 'comic' (xkcd)
+  // has no body text once the <img> is stripped, so its caption is lifted from
+  // the image's title/alt text into the summary.
+  variant?: 'comic'
 }
 
 interface XmlNode {
@@ -63,29 +67,120 @@ interface XmlNode {
 // A broad set of named entities (the XML five plus the common HTML/Latin-1
 // set). Anything not listed is left untouched rather than guessed at.
 const NAMED_ENTITIES: Record<string, string> = {
-  amp: '&', lt: '<', gt: '>', quot: '"', apos: "'",
-  nbsp: ' ', ensp: ' ', emsp: ' ', thinsp: ' ', shy: '',
-  ndash: '–', mdash: '—', hellip: '…', middot: '·', bull: '•',
-  lsquo: '‘', rsquo: '’', sbquo: '‚', ldquo: '“', rdquo: '”', bdquo: '„',
-  laquo: '«', raquo: '»', lsaquo: '‹', rsaquo: '›', prime: '′', Prime: '″',
-  copy: '©', reg: '®', trade: '™', deg: '°', sect: '§', para: '¶',
-  micro: 'µ', plusmn: '±', times: '×', divide: '÷', minus: '−',
-  frac12: '½', frac14: '¼', frac34: '¾', sup2: '²', sup3: '³', sup1: '¹',
-  euro: '€', pound: '£', cent: '¢', yen: '¥', curren: '¤',
-  dagger: '†', Dagger: '‡', permil: '‰', not: '¬', iquest: '¿', iexcl: '¡',
-  aacute: 'á', agrave: 'à', acirc: 'â', atilde: 'ã', auml: 'ä', aring: 'å', aelig: 'æ',
-  Aacute: 'Á', Agrave: 'À', Acirc: 'Â', Atilde: 'Ã', Auml: 'Ä', Aring: 'Å', AElig: 'Æ',
-  ccedil: 'ç', Ccedil: 'Ç',
-  eacute: 'é', egrave: 'è', ecirc: 'ê', euml: 'ë',
-  Eacute: 'É', Egrave: 'È', Ecirc: 'Ê', Euml: 'Ë',
-  iacute: 'í', igrave: 'ì', icirc: 'î', iuml: 'ï',
-  Iacute: 'Í', Igrave: 'Ì', Icirc: 'Î', Iuml: 'Ï',
-  ntilde: 'ñ', Ntilde: 'Ñ',
-  oacute: 'ó', ograve: 'ò', ocirc: 'ô', otilde: 'õ', ouml: 'ö', oslash: 'ø', oelig: 'œ',
-  Oacute: 'Ó', Ograve: 'Ò', Ocirc: 'Ô', Otilde: 'Õ', Ouml: 'Ö', Oslash: 'Ø', OElig: 'Œ',
-  uacute: 'ú', ugrave: 'ù', ucirc: 'û', uuml: 'ü',
-  Uacute: 'Ú', Ugrave: 'Ù', Ucirc: 'Û', Uuml: 'Ü',
-  yacute: 'ý', yuml: 'ÿ', szlig: 'ß'
+  amp: '&',
+  lt: '<',
+  gt: '>',
+  quot: '"',
+  apos: "'",
+  nbsp: ' ',
+  ensp: ' ',
+  emsp: ' ',
+  thinsp: ' ',
+  shy: '',
+  ndash: '–',
+  mdash: '—',
+  hellip: '…',
+  middot: '·',
+  bull: '•',
+  lsquo: '‘',
+  rsquo: '’',
+  sbquo: '‚',
+  ldquo: '“',
+  rdquo: '”',
+  bdquo: '„',
+  laquo: '«',
+  raquo: '»',
+  lsaquo: '‹',
+  rsaquo: '›',
+  prime: '′',
+  Prime: '″',
+  copy: '©',
+  reg: '®',
+  trade: '™',
+  deg: '°',
+  sect: '§',
+  para: '¶',
+  micro: 'µ',
+  plusmn: '±',
+  times: '×',
+  divide: '÷',
+  minus: '−',
+  frac12: '½',
+  frac14: '¼',
+  frac34: '¾',
+  sup2: '²',
+  sup3: '³',
+  sup1: '¹',
+  euro: '€',
+  pound: '£',
+  cent: '¢',
+  yen: '¥',
+  curren: '¤',
+  dagger: '†',
+  Dagger: '‡',
+  permil: '‰',
+  not: '¬',
+  iquest: '¿',
+  iexcl: '¡',
+  aacute: 'á',
+  agrave: 'à',
+  acirc: 'â',
+  atilde: 'ã',
+  auml: 'ä',
+  aring: 'å',
+  aelig: 'æ',
+  Aacute: 'Á',
+  Agrave: 'À',
+  Acirc: 'Â',
+  Atilde: 'Ã',
+  Auml: 'Ä',
+  Aring: 'Å',
+  AElig: 'Æ',
+  ccedil: 'ç',
+  Ccedil: 'Ç',
+  eacute: 'é',
+  egrave: 'è',
+  ecirc: 'ê',
+  euml: 'ë',
+  Eacute: 'É',
+  Egrave: 'È',
+  Ecirc: 'Ê',
+  Euml: 'Ë',
+  iacute: 'í',
+  igrave: 'ì',
+  icirc: 'î',
+  iuml: 'ï',
+  Iacute: 'Í',
+  Igrave: 'Ì',
+  Icirc: 'Î',
+  Iuml: 'Ï',
+  ntilde: 'ñ',
+  Ntilde: 'Ñ',
+  oacute: 'ó',
+  ograve: 'ò',
+  ocirc: 'ô',
+  otilde: 'õ',
+  ouml: 'ö',
+  oslash: 'ø',
+  oelig: 'œ',
+  Oacute: 'Ó',
+  Ograve: 'Ò',
+  Ocirc: 'Ô',
+  Otilde: 'Õ',
+  Ouml: 'Ö',
+  Oslash: 'Ø',
+  OElig: 'Œ',
+  uacute: 'ú',
+  ugrave: 'ù',
+  ucirc: 'û',
+  uuml: 'ü',
+  Uacute: 'Ú',
+  Ugrave: 'Ù',
+  Ucirc: 'Û',
+  Uuml: 'Ü',
+  yacute: 'ý',
+  yuml: 'ÿ',
+  szlig: 'ß'
 }
 
 const fromCodePoint = (cp: number): string => {
@@ -313,6 +408,25 @@ export const firstImageInHtml = (html: string): string | null => {
   return (match[2] ?? match[3] ?? match[4] ?? '') || null
 }
 
+const IMG_TAG_RE = /<img\b[^>]*>/i
+const IMG_TITLE_RE = /\btitle\s*=\s*("([^"]*)"|'([^']*)'|([^\s">]+))/i
+const IMG_ALT_RE = /\balt\s*=\s*("([^"]*)"|'([^']*)'|([^\s">]+))/i
+
+// The title/alt text of the first <img> in a (RAW) HTML string. Decorative for
+// most feeds, but comic feeds (xkcd) put the strip's caption / hover joke there
+// — the item's real body. Decodes twice like stripHtml: once to expose the
+// escaped <img>, once more so entities inside the caption become characters.
+export const firstImageText = (html: string): string | null => {
+  const tag = IMG_TAG_RE.exec(decodeEntities(html))
+  if (!tag) return null
+  const pick = (re: RegExp): string => {
+    const match = re.exec(tag[0])
+    return match ? (match[2] ?? match[3] ?? match[4] ?? '') : ''
+  }
+  const text = pick(IMG_TITLE_RE) || pick(IMG_ALT_RE)
+  return decodeEntities(text).trim() || null
+}
+
 // Resolve a possibly-relative URL against the feed's base. Absolute URLs pass
 // through normalized; if there is no base and the URL is relative, it is
 // returned unchanged (the client then treats a relative image as unusable).
@@ -376,7 +490,8 @@ const upgradeIchef = (url: string): string | null =>
 
 const pickImage = (item: XmlNode, contentHtml: string): PickedImage => {
   const images = mediaContents(item).filter(
-    (node) => node.attrs.url && isImageType(node.attrs.type ?? '', node.attrs.medium ?? '', node.attrs.url)
+    (node) =>
+      node.attrs.url && isImageType(node.attrs.type ?? '', node.attrs.medium ?? '', node.attrs.url)
   )
   if (images.length > 0) {
     images.sort(
@@ -460,14 +575,18 @@ const normalizeItem = (
   item: XmlNode,
   isAtom: boolean,
   baseUrl?: string,
-  isAggregator = false
+  isAggregator = false,
+  variant?: 'comic'
 ): FeedItem => {
   let title = stripHtml(htmlOf(kid(item, 'title')))
   // Aggregators (Google News) append " - <Publisher>" to every title; the
   // publisher is in <source>. Strip it so the headline reads cleanly.
   const source = textOf(kid(item, 'source'))
   if (source && title.endsWith(source)) {
-    title = title.slice(0, -source.length).replace(/\s*[-–—]\s*$/, '').trim()
+    title = title
+      .slice(0, -source.length)
+      .replace(/\s*[-–—]\s*$/, '')
+      .trim()
   }
   const link = resolveUrl(extractLink(item, isAtom), baseUrl)
 
@@ -494,6 +613,9 @@ const normalizeItem = (
   } else if (isAggregator) {
     // Google News descriptions just repeat the title + source link — drop them.
     summary = ''
+  } else if (variant === 'comic') {
+    // Stripping the <img> leaves nothing; the caption lives in its title/alt.
+    summary = clip(firstImageText(contentHtml) ?? '', 500)
   }
 
   const picked = pickImage(item, contentHtml)
@@ -520,7 +642,7 @@ const isAggregatorHost = (baseUrl?: string): boolean => {
 }
 
 export const parseFeed = (xml: string, options: ParseOptions = {}): ParsedFeed => {
-  const { baseUrl, max = MAX_ITEMS } = options
+  const { baseUrl, max = MAX_ITEMS, variant } = options
   const aggregator = isAggregatorHost(baseUrl)
   const doc = parseXml(xml)
 
@@ -553,7 +675,7 @@ export const parseFeed = (xml: string, options: ParseOptions = {}): ParsedFeed =
   }
 
   const items = itemNodes
-    .map((node) => normalizeItem(node, isAtom, baseUrl, aggregator))
+    .map((node) => normalizeItem(node, isAtom, baseUrl, aggregator, variant))
     .filter((item) => item.title || item.link)
 
   // Only re-sort when EVERY item is dated. Mixed feeds (e.g. CNN ships some

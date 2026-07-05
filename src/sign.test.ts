@@ -23,6 +23,8 @@ describe('sign / verify', () => {
 
   it('builds a url-encoded /img path with a signature', async () => {
     const path = await signedImagePath('https://img.example/a.jpg?x=1&y=2', 'secret')
-    expect(path).toMatch(/^\/img\?u=https%3A%2F%2Fimg\.example%2Fa\.jpg%3Fx%3D1%26y%3D2&s=[A-Za-z0-9_-]+$/)
+    expect(path).toMatch(
+      /^\/img\?u=https%3A%2F%2Fimg\.example%2Fa\.jpg%3Fx%3D1%26y%3D2&s=[A-Za-z0-9_-]+$/
+    )
   })
 })

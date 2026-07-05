@@ -17,7 +17,8 @@
   font-optical-sizing: auto;
   font-display: swap;
   src: url("/static/fonts/bricolage-grotesque-latin-standard-normal.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
   font-family: "Hanken Grotesk";
@@ -25,7 +26,8 @@
   font-style: normal;
   font-display: swap;
   src: url("/static/fonts/hanken-grotesk-latin-wght-normal.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
   font-family: "Space Mono";
@@ -33,7 +35,8 @@
   font-style: normal;
   font-display: swap;
   src: url("/static/fonts/space-mono-latin-400-normal.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
   font-family: "Space Mono";
@@ -41,7 +44,8 @@
   font-style: normal;
   font-display: swap;
   src: url("/static/fonts/space-mono-latin-700-normal.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 :root {
@@ -360,6 +364,53 @@ body {
   text-shadow: 0 1px 4px rgb(0 0 0 / 0.7);
   text-align: center;
   white-space: nowrap;
+}
+
+/* =========================================================================
+   Comic variant (xkcd) — the strip IS the story. Shown whole on light paper
+   with a caption band carrying the title (comic name) + summary (the alt/hover
+   joke lifted by the parser), instead of cropped under the photo scrim. The
+   strip is line art on white, so the blurred fill + dark scrim are dropped.
+   ========================================================================= */
+.stage[data-variant="comic"] .story {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  background: #fbfbf9;
+}
+/* Media stops being a full-bleed backdrop and becomes the top row: the strip
+   contained on paper, with a little breathing room, no blurred fill. */
+.stage[data-variant="comic"] .story__media {
+  position: relative;
+  grid-row: 1;
+  min-block-size: 0;
+}
+.stage[data-variant="comic"] .story__img {
+  padding: clamp(0.8rem, 3vmin, 3rem);
+}
+.stage[data-variant="comic"] .story__img--back,
+.stage[data-variant="comic"] .story__scrim {
+  display: none;
+}
+/* Caption band: dark ink under the strip, in normal flow (non-overlapping).
+   Capped + overflow-hidden so main.ts's fitPanel still trims a long joke. */
+.stage[data-variant="comic"] .story__panel {
+  position: relative;
+  grid-row: 2;
+  inset: auto;
+  gap: 0.4rem;
+  max-block-size: 34svh;
+  background: var(--ink-rail);
+  border-block-start: 1px solid var(--hairline);
+  padding-block: clamp(0.9rem, 2.4vmin, 2.2rem);
+}
+.stage[data-variant="comic"] .story__title {
+  font-size: calc(clamp(1.3rem, 2.2vw + 1vh, 3rem) * var(--title-scale));
+  line-height: 1.04;
+}
+.stage[data-variant="comic"] .story__summary {
+  color: var(--paper);
+  max-inline-size: 70ch;
+  font-size: clamp(0.95rem, 0.8vw + 0.6vh, 1.5rem);
 }
 
 /* =========================================================================
