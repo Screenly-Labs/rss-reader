@@ -96,7 +96,7 @@ feed.get('/', async (c) => {
     }
 
     const xml = await resp.text()
-    const parsed = parseFeed(xml, { baseUrl: selected.url })
+    const parsed = parseFeed(xml, { baseUrl: selected.url, variant: selected.variant })
 
     // A 200 that parses to nothing usually means the upstream served an HTML
     // error/maintenance page, not a real feed. Return 502 (which Hono's cache
@@ -117,7 +117,12 @@ feed.get('/', async (c) => {
     }
 
     return c.json({
-      feed: { id: selected.id, title: selected.title, category: selected.category },
+      feed: {
+        id: selected.id,
+        title: selected.title,
+        category: selected.category,
+        variant: selected.variant
+      },
       // The feed's own <title> if present, else the curated registry title.
       title: parsed.title || selected.title,
       items: parsed.items

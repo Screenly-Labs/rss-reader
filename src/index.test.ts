@@ -60,7 +60,12 @@ describe('Routing', () => {
   })
 
   it('renders the page HTML via hono JSX for a known feed', () => {
-    const body = jsx(App, { env: 'production', feedId: 'nyt', feedTitle: 'NYT', v: 'testver' }).toString()
+    const body = jsx(App, {
+      env: 'production',
+      feedId: 'nyt',
+      feedTitle: 'NYT',
+      v: 'testver'
+    }).toString()
     expect(body).toContain('<!DOCTYPE html>')
     expect(body).toContain('id="feed-data"')
     // main.ts drives everything off #stage; the contract must hold.
@@ -72,13 +77,23 @@ describe('Routing', () => {
   })
 
   it('omits Sentry / GA script tags for an env with no analytics IDs (stage)', () => {
-    const body = jsx(App, { env: 'stage', feedId: 'nyt', feedTitle: 'NYT', v: 'testver' }).toString()
+    const body = jsx(App, {
+      env: 'stage',
+      feedId: 'nyt',
+      feedTitle: 'NYT',
+      v: 'testver'
+    }).toString()
     expect(body).not.toContain('sentry-cdn.com')
     expect(body).not.toContain('googletagmanager.com')
   })
 
   it('loads GA in production and attributes the page_view to the feed source', () => {
-    const body = jsx(App, { env: 'production', feedId: 'nyt', feedTitle: 'NYT', v: 'testver' }).toString()
+    const body = jsx(App, {
+      env: 'production',
+      feedId: 'nyt',
+      feedTitle: 'NYT',
+      v: 'testver'
+    }).toString()
     expect(body).toContain('googletagmanager.com/gtag/js?id=G-BDLWRXXW1B')
     // The feed rides along on the config call so GA4's automatic page_view is
     // attributed to it — not just the later custom events from main.ts.
@@ -117,7 +132,11 @@ describe('Page caching (/ route)', () => {
         }
       }
     })
-    const ctx = { waitUntil: (p: Promise<unknown>) => puts.push(p), passThroughOnException() {}, props: {} }
+    const ctx = {
+      waitUntil: (p: Promise<unknown>) => puts.push(p),
+      passThroughOnException() {},
+      props: {}
+    }
 
     const res = await app.request('http://localhost/?feed=nyt', {}, { ENV: 'production' }, ctx)
 
@@ -152,7 +171,9 @@ describe('Static asset caching (/static/*)', () => {
   })
 
   it('caches fonts immutably even though their @font-face URLs are unversioned', async () => {
-    const font = await app.request('http://localhost/static/fonts/fraunces-latin-standard-normal.woff2')
+    const font = await app.request(
+      'http://localhost/static/fonts/fraunces-latin-standard-normal.woff2'
+    )
     expect(font.headers.get('Cache-Control')).toBe('public, max-age=31536000, immutable')
   })
 })
@@ -177,8 +198,8 @@ describe('App manifest (/.well-known/signage-app.json)', () => {
     // The only setting is the curated feed id; its enum, labels and default must
     // stay in lockstep with src/feeds.ts (the single source of truth) so the
     // config dropdown can never offer an id the worker would reject.
-    const feed = (body.settings as { properties: Record<string, Record<string, unknown>> }).properties
-      .feed
+    const feed = (body.settings as { properties: Record<string, Record<string, unknown>> })
+      .properties.feed
     expect(feed).toBeDefined()
     expect(feed['x-widget']).toBe('select')
     expect(feed.enum).toEqual(FEEDS.map((f) => f.id))
@@ -202,17 +223,21 @@ describe('Feed API caching (/api/feed)', () => {
     }) as unknown as typeof fetch
 
     const puts: Promise<unknown>[] = []
-    const ctx = { waitUntil: (p: Promise<unknown>) => puts.push(p), passThroughOnException() {}, props: {} }
+    const ctx = {
+      waitUntil: (p: Promise<unknown>) => puts.push(p),
+      passThroughOnException() {},
+      props: {}
+    }
     const url = 'http://localhost/api/feed?feed=nyt'
 
-    const first = await app.request(url, {}, { ENV: "production" }, ctx)
+    const first = await app.request(url, {}, { ENV: 'production' }, ctx)
     expect(first.status).toBe(200)
     expect(first.headers.get('Cache-Control')).toContain('s-maxage=3600')
     expect(fetchCount).toBe(1)
 
     await runWaitUntil(puts)
 
-    const second = await app.request(url, {}, { ENV: "production" }, ctx)
+    const second = await app.request(url, {}, { ENV: 'production' }, ctx)
     expect(second.status).toBe(200)
     expect(fetchCount).toBe(1)
   })

@@ -108,10 +108,21 @@ once webfonts settle.
 
 ### The feed registry (`src/feeds.ts`)
 
-The single source of truth: `{ id, title, url, category }`. Ids are the public
-config contract (keep them short/stable). To add a feed: append an entry,
-confirm it parses, done. Categories: `general` (US + European news), `tech`,
-`sports`, `visual` (Media-RSS imagery), `longform` (slow journalism).
+The single source of truth: `{ id, title, url, category, variant? }`. Ids are
+the public config contract (keep them short/stable). To add a feed: append an
+entry, confirm it parses, done. Categories: `general` (US + European news),
+`tech`, `sports`, `visual` (Media-RSS imagery), `longform` (slow journalism).
+
+**Variants** (`variant?: 'comic'`) mark feeds that need bespoke parse + render
+beyond the generic pipeline. The only one today is `comic` (xkcd): the strip is
+carried as the item's `<img>` and the joke lives in that image's `title`/`alt`
+text, which the generic path would strip to an empty summary. So the parser
+(`ParseOptions.variant`) lifts the alt/title into the summary, the feed route
+echoes `variant` in the `/api/feed` JSON, and `main.ts` stamps it on the stage
+as `data-variant`. CSS then shows the strip whole on light paper with a caption
+band (source, comic name, the alt-text joke) — no blurred fill, no dark photo
+scrim cropping the art. Add a variant only when a source genuinely doesn't fit
+the normal shape; most feeds set none.
 
 ## Commands (Bun only, no npm/npx)
 

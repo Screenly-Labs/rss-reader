@@ -12,7 +12,7 @@ import type { FeedItem } from '../../../src/parse'
 // never strands a cached page.
 
 interface FeedResponse {
-  feed?: { id: string; title: string; category: string }
+  feed?: { id: string; title: string; category: string; variant?: string }
   title?: string
   items?: FeedItem[]
   error?: boolean
@@ -72,7 +72,12 @@ interface FeedResponse {
     // Every event carries the feed `source` so analytics can break usage down
     // by which feed a screen is showing.
     if (typeof gtag !== 'undefined') {
-      gtag('event', name, { app_name: APP_NAME, source: feedId, source_title: feedTitle, ...payload })
+      gtag('event', name, {
+        app_name: APP_NAME,
+        source: feedId,
+        source_title: feedTitle,
+        ...payload
+      })
     }
   }
 
@@ -120,7 +125,8 @@ interface FeedResponse {
     const overflows = (): boolean => panel.scrollHeight > panel.clientHeight + 1
     const words = summary ? summary.split(/\s+/).filter(Boolean) : []
 
-    const setTitleScale = (scale: number): void => stage.style.setProperty('--title-scale', String(scale))
+    const setTitleScale = (scale: number): void =>
+      stage.style.setProperty('--title-scale', String(scale))
     const setWords = (n: number): void => {
       if (n <= 0) {
         summaryEl.textContent = ''
@@ -325,6 +331,8 @@ interface FeedResponse {
     // <title> is sometimes ugly (Google News "site:reuters.com when:1d ...",
     // CBS "Home - cbsnews.com"). SSR already seeded feedTitle from the registry.
     if (data.feed?.title) feedTitle = data.feed.title
+    // Bespoke feeds (e.g. 'comic') get their own CSS treatment via the stage.
+    if (stage) stage.dataset.variant = data.feed?.variant ?? ''
 
     const imaged = items.filter((item) => item.image).length
     mode = imaged / items.length >= IMAGE_FEED_THRESHOLD ? 'story' : 'list'
