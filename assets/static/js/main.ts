@@ -72,7 +72,12 @@ interface FeedResponse {
     // Every event carries the feed `source` so analytics can break usage down
     // by which feed a screen is showing.
     if (typeof gtag !== 'undefined') {
-      gtag('event', name, { app_name: APP_NAME, source: feedId, source_title: feedTitle, ...payload })
+      gtag('event', name, {
+        app_name: APP_NAME,
+        source: feedId,
+        source_title: feedTitle,
+        ...payload
+      })
     }
   }
 
@@ -120,7 +125,8 @@ interface FeedResponse {
     const overflows = (): boolean => panel.scrollHeight > panel.clientHeight + 1
     const words = summary ? summary.split(/\s+/).filter(Boolean) : []
 
-    const setTitleScale = (scale: number): void => stage.style.setProperty('--title-scale', String(scale))
+    const setTitleScale = (scale: number): void =>
+      stage.style.setProperty('--title-scale', String(scale))
     const setWords = (n: number): void => {
       if (n <= 0) {
         summaryEl.textContent = ''

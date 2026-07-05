@@ -29,7 +29,12 @@ export interface Feed {
 
 export const FEEDS: Feed[] = [
   // ---- General news (US) --------------------------------------------------
-  { id: 'npr', title: 'NPR — Top Stories', url: 'https://feeds.npr.org/1001/rss.xml', category: 'general' },
+  {
+    id: 'npr',
+    title: 'NPR — Top Stories',
+    url: 'https://feeds.npr.org/1001/rss.xml',
+    category: 'general'
+  },
   {
     id: 'cbs',
     title: 'CBS News — Top Stories',
@@ -54,29 +59,54 @@ export const FEEDS: Feed[] = [
     url: 'https://abcnews.go.com/abcnews/topstories',
     category: 'general'
   },
-  { id: 'cnn', title: 'CNN — Top Stories', url: 'http://rss.cnn.com/rss/cnn_topstories.rss', category: 'general' },
-  { id: 'cnn-world', title: 'CNN — World', url: 'http://rss.cnn.com/rss/cnn_world.rss', category: 'general' },
+  {
+    id: 'cnn',
+    title: 'CNN — Top Stories',
+    url: 'http://rss.cnn.com/rss/cnn_topstories.rss',
+    category: 'general'
+  },
+  {
+    id: 'cnn-world',
+    title: 'CNN — World',
+    url: 'http://rss.cnn.com/rss/cnn_world.rss',
+    category: 'general'
+  },
   {
     id: 'nbc',
     title: 'NBC News — Top Stories',
     url: 'https://feeds.nbcnews.com/nbcnews/public/news',
     category: 'general'
   },
-  { id: 'pbs', title: 'PBS NewsHour', url: 'https://www.pbs.org/newshour/feeds/rss/headlines', category: 'general' },
+  {
+    id: 'pbs',
+    title: 'PBS NewsHour',
+    url: 'https://www.pbs.org/newshour/feeds/rss/headlines',
+    category: 'general'
+  },
   {
     id: 'guardian-us',
     title: 'The Guardian — US',
     url: 'https://www.theguardian.com/us-news/rss',
     category: 'general'
   },
-  { id: 'bbc-top', title: 'BBC News — Top Stories', url: 'http://feeds.bbci.co.uk/news/rss.xml', category: 'general' },
+  {
+    id: 'bbc-top',
+    title: 'BBC News — Top Stories',
+    url: 'http://feeds.bbci.co.uk/news/rss.xml',
+    category: 'general'
+  },
   {
     id: 'bbc-world',
     title: 'BBC News — World',
     url: 'http://feeds.bbci.co.uk/news/world/rss.xml',
     category: 'general'
   },
-  { id: 'bbc-uk', title: 'BBC News — UK', url: 'http://feeds.bbci.co.uk/news/uk/rss.xml', category: 'general' },
+  {
+    id: 'bbc-uk',
+    title: 'BBC News — UK',
+    url: 'http://feeds.bbci.co.uk/news/uk/rss.xml',
+    category: 'general'
+  },
   {
     id: 'bbc-business',
     title: 'BBC News — Business',
@@ -153,7 +183,12 @@ export const FEEDS: Feed[] = [
     url: 'https://hnrss.org/frontpage',
     category: 'tech'
   },
-  { id: 'the-verge', title: 'The Verge', url: 'https://www.theverge.com/rss/index.xml', category: 'tech' },
+  {
+    id: 'the-verge',
+    title: 'The Verge',
+    url: 'https://www.theverge.com/rss/index.xml',
+    category: 'tech'
+  },
   {
     id: 'ars-technica',
     title: 'Ars Technica',
@@ -163,20 +198,45 @@ export const FEEDS: Feed[] = [
 
   // ---- Sports -------------------------------------------------------------
   // US
-  { id: 'cbs-sports', title: 'CBS Sports', url: 'https://www.cbssports.com/rss/headlines/', category: 'sports' },
-  { id: 'yahoo-sports', title: 'Yahoo Sports', url: 'https://sports.yahoo.com/rss/', category: 'sports' },
+  {
+    id: 'cbs-sports',
+    title: 'CBS Sports',
+    url: 'https://www.cbssports.com/rss/headlines/',
+    category: 'sports'
+  },
+  {
+    id: 'yahoo-sports',
+    title: 'Yahoo Sports',
+    url: 'https://sports.yahoo.com/rss/',
+    category: 'sports'
+  },
   // ESPN's RSS is text-only (no media tags, no in-body <img>), so its slides
   // show headline + body over a blurred fill rather than a hero image.
-  { id: 'espn', title: 'ESPN — Top Headlines', url: 'https://www.espn.com/espn/rss/news', category: 'sports' },
+  {
+    id: 'espn',
+    title: 'ESPN — Top Headlines',
+    url: 'https://www.espn.com/espn/rss/news',
+    category: 'sports'
+  },
   // Europe
-  { id: 'bbc-sport', title: 'BBC Sport', url: 'http://feeds.bbci.co.uk/sport/rss.xml', category: 'sports' },
+  {
+    id: 'bbc-sport',
+    title: 'BBC Sport',
+    url: 'http://feeds.bbci.co.uk/sport/rss.xml',
+    category: 'sports'
+  },
   {
     id: 'guardian-football',
     title: 'The Guardian — Football',
     url: 'https://www.theguardian.com/football/rss',
     category: 'sports'
   },
-  { id: 'sky-sports', title: 'Sky Sports', url: 'https://www.skysports.com/rss/12040', category: 'sports' },
+  {
+    id: 'sky-sports',
+    title: 'Sky Sports',
+    url: 'https://www.skysports.com/rss/12040',
+    category: 'sports'
+  },
 
   // ---- Visual / Media RSS -------------------------------------------------
   {

@@ -72,7 +72,9 @@ app.get('/', async (c) => {
   const env = c.env.ENV
   const renderPage = (): Response =>
     new Response(
-      (<App feedId={selected.id} feedTitle={selected.title} env={env} v={ASSET_VERSION} />).toString(),
+      (
+        <App feedId={selected.id} feedTitle={selected.title} env={env} v={ASSET_VERSION} />
+      ).toString(),
       {
         status: 200,
         headers: {

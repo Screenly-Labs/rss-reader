@@ -62,9 +62,7 @@ describe('Feed route', () => {
     globalThis.fetch = (async () => xml(IMG_RSS)) as unknown as typeof fetch
     const res = await call('http://localhost/?feed=nyt', { IMAGE_SIGNING_KEY: 'testkey' })
     const item = (await res.json()).items[0]
-    expect(item.image).toMatch(
-      /^\/img\?u=https%3A%2F%2Fimg\.example%2Fbig\.jpg&s=[A-Za-z0-9_-]+$/
-    )
+    expect(item.image).toMatch(/^\/img\?u=https%3A%2F%2Fimg\.example%2Fbig\.jpg&s=[A-Za-z0-9_-]+$/)
   })
 
   it('leaves image URLs untouched when no signing key is set', async () => {

@@ -21,9 +21,13 @@ describe('/img signed resize redirect', () => {
   it('302-redirects a validly-signed URL to wsrv (webp, width-capped, ssl:)', async () => {
     const u = 'https://img.example/a.jpg'
     const s = await sign(u, 'k')
-    const res = await call(`http://x/?u=${encodeURIComponent(u)}&s=${s}`, { IMAGE_SIGNING_KEY: 'k' }, {
-      accept: 'image/avif,image/webp,*/*'
-    })
+    const res = await call(
+      `http://x/?u=${encodeURIComponent(u)}&s=${s}`,
+      { IMAGE_SIGNING_KEY: 'k' },
+      {
+        accept: 'image/avif,image/webp,*/*'
+      }
+    )
     expect(res.status).toBe(302)
     const loc = res.headers.get('Location') ?? ''
     expect(loc).toContain('wsrv.nl')
@@ -35,9 +39,13 @@ describe('/img signed resize redirect', () => {
   it('falls back to jpg when the client does not accept webp', async () => {
     const u = 'https://img.example/a.jpg'
     const s = await sign(u, 'k')
-    const res = await call(`http://x/?u=${encodeURIComponent(u)}&s=${s}`, { IMAGE_SIGNING_KEY: 'k' }, {
-      accept: 'image/*,*/*'
-    })
+    const res = await call(
+      `http://x/?u=${encodeURIComponent(u)}&s=${s}`,
+      { IMAGE_SIGNING_KEY: 'k' },
+      {
+        accept: 'image/*,*/*'
+      }
+    )
     expect(res.headers.get('Location') ?? '').toContain('output=jpg')
   })
 })

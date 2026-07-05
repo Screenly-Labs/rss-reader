@@ -114,7 +114,10 @@ describe('parseFeed — image fallback chain', () => {
       <title>Pod</title><link>https://e/3</link>
       <enclosure url="https://a.example/ep.mp3" type="audio/mpeg" length="999" />
     </item></channel></rss>`
-    expect(parseFeed(xml).items[0].media).toEqual({ type: 'audio', url: 'https://a.example/ep.mp3' })
+    expect(parseFeed(xml).items[0].media).toEqual({
+      type: 'audio',
+      url: 'https://a.example/ep.mp3'
+    })
   })
 })
 
@@ -158,7 +161,10 @@ describe('parseXml + helpers', () => {
   })
 
   it('caps how many items it returns', () => {
-    const items = Array.from({ length: 50 }, (_, i) => `<item><title>t${i}</title><link>l${i}</link></item>`).join('')
+    const items = Array.from(
+      { length: 50 },
+      (_, i) => `<item><title>t${i}</title><link>l${i}</link></item>`
+    ).join('')
     const xml = `<rss version="2.0"><channel><title>Big</title>${items}</channel></rss>`
     expect(parseFeed(xml, { max: 5 }).items).toHaveLength(5)
   })
