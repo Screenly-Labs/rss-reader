@@ -363,6 +363,53 @@ body {
 }
 
 /* =========================================================================
+   Comic variant (xkcd) — the strip IS the story. Shown whole on light paper
+   with a caption band carrying the title (comic name) + summary (the alt/hover
+   joke lifted by the parser), instead of cropped under the photo scrim. The
+   strip is line art on white, so the blurred fill + dark scrim are dropped.
+   ========================================================================= */
+.stage[data-variant="comic"] .story {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  background: #fbfbf9;
+}
+/* Media stops being a full-bleed backdrop and becomes the top row: the strip
+   contained on paper, with a little breathing room, no blurred fill. */
+.stage[data-variant="comic"] .story__media {
+  position: relative;
+  grid-row: 1;
+  min-block-size: 0;
+}
+.stage[data-variant="comic"] .story__img {
+  padding: clamp(0.8rem, 3vmin, 3rem);
+}
+.stage[data-variant="comic"] .story__img--back,
+.stage[data-variant="comic"] .story__scrim {
+  display: none;
+}
+/* Caption band: dark ink under the strip, in normal flow (non-overlapping).
+   Capped + overflow-hidden so main.ts's fitPanel still trims a long joke. */
+.stage[data-variant="comic"] .story__panel {
+  position: relative;
+  grid-row: 2;
+  inset: auto;
+  gap: 0.4rem;
+  max-block-size: 34svh;
+  background: var(--ink-rail);
+  border-block-start: 1px solid var(--hairline);
+  padding-block: clamp(0.9rem, 2.4vmin, 2.2rem);
+}
+.stage[data-variant="comic"] .story__title {
+  font-size: calc(clamp(1.3rem, 2.2vw + 1vh, 3rem) * var(--title-scale));
+  line-height: 1.04;
+}
+.stage[data-variant="comic"] .story__summary {
+  color: var(--paper);
+  max-inline-size: 70ch;
+  font-size: clamp(0.95rem, 0.8vw + 0.6vh, 1.5rem);
+}
+
+/* =========================================================================
    List mode — several short stories per page (text feeds), each with a QR
    ========================================================================= */
 .list {

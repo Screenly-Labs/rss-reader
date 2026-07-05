@@ -118,6 +118,26 @@ describe('parseFeed — image fallback chain', () => {
   })
 })
 
+describe('parseFeed — comic variant (xkcd)', () => {
+  // xkcd escapes the whole <img> into <description>; the joke is its title/alt.
+  const xml = `<rss version="2.0"><channel><title>xkcd.com</title><item>
+    <title>Types of Tornado Alert</title>
+    <link>https://xkcd.com/3267/</link>
+    <pubDate>Fri, 03 Jul 2026 04:00:00 -0000</pubDate>
+    <description>&lt;img src="https://imgs.xkcd.com/comics/types_of_tornado_alert.png" title="I hate the unearthly sound my phone makes." alt="I hate the unearthly sound my phone makes." /&gt;</description>
+  </item></channel></rss>`
+
+  it('lifts the image title/alt text into the summary', () => {
+    const item = parseFeed(xml, { variant: 'comic' }).items[0]
+    expect(item.image).toBe('https://imgs.xkcd.com/comics/types_of_tornado_alert.png')
+    expect(item.summary).toBe('I hate the unearthly sound my phone makes.')
+  })
+
+  it('leaves the summary empty without the variant (default pipeline)', () => {
+    expect(parseFeed(xml).items[0].summary).toBe('')
+  })
+})
+
 describe('parseXml + helpers', () => {
   it('handles CDATA, comments and self-closing tags without throwing', () => {
     const doc = parseXml('<r><!-- c --><a x="1"/><b><![CDATA[<keep>]]></b></r>')

@@ -49,6 +49,10 @@ export interface ParseOptions {
   // The feed's own URL, used to resolve relative item/image links.
   baseUrl?: string
   max?: number
+  // Bespoke handling for feeds that don't fit the generic shape. 'comic' (xkcd)
+  // has no body text once the <img> is stripped, so its caption is lifted from
+  // the image's title/alt text into the summary.
+  variant?: 'comic'
 }
 
 interface XmlNode {
@@ -313,6 +317,25 @@ export const firstImageInHtml = (html: string): string | null => {
   return (match[2] ?? match[3] ?? match[4] ?? '') || null
 }
 
+const IMG_TAG_RE = /<img\b[^>]*>/i
+const IMG_TITLE_RE = /\btitle\s*=\s*("([^"]*)"|'([^']*)'|([^\s">]+))/i
+const IMG_ALT_RE = /\balt\s*=\s*("([^"]*)"|'([^']*)'|([^\s">]+))/i
+
+// The title/alt text of the first <img> in a (RAW) HTML string. Decorative for
+// most feeds, but comic feeds (xkcd) put the strip's caption / hover joke there
+// — the item's real body. Decodes twice like stripHtml: once to expose the
+// escaped <img>, once more so entities inside the caption become characters.
+export const firstImageText = (html: string): string | null => {
+  const tag = IMG_TAG_RE.exec(decodeEntities(html))
+  if (!tag) return null
+  const pick = (re: RegExp): string => {
+    const match = re.exec(tag[0])
+    return match ? (match[2] ?? match[3] ?? match[4] ?? '') : ''
+  }
+  const text = pick(IMG_TITLE_RE) || pick(IMG_ALT_RE)
+  return decodeEntities(text).trim() || null
+}
+
 // Resolve a possibly-relative URL against the feed's base. Absolute URLs pass
 // through normalized; if there is no base and the URL is relative, it is
 // returned unchanged (the client then treats a relative image as unusable).
@@ -460,7 +483,8 @@ const normalizeItem = (
   item: XmlNode,
   isAtom: boolean,
   baseUrl?: string,
-  isAggregator = false
+  isAggregator = false,
+  variant?: 'comic'
 ): FeedItem => {
   let title = stripHtml(htmlOf(kid(item, 'title')))
   // Aggregators (Google News) append " - <Publisher>" to every title; the
@@ -494,6 +518,9 @@ const normalizeItem = (
   } else if (isAggregator) {
     // Google News descriptions just repeat the title + source link — drop them.
     summary = ''
+  } else if (variant === 'comic') {
+    // Stripping the <img> leaves nothing; the caption lives in its title/alt.
+    summary = clip(firstImageText(contentHtml) ?? '', 500)
   }
 
   const picked = pickImage(item, contentHtml)
@@ -520,7 +547,7 @@ const isAggregatorHost = (baseUrl?: string): boolean => {
 }
 
 export const parseFeed = (xml: string, options: ParseOptions = {}): ParsedFeed => {
-  const { baseUrl, max = MAX_ITEMS } = options
+  const { baseUrl, max = MAX_ITEMS, variant } = options
   const aggregator = isAggregatorHost(baseUrl)
   const doc = parseXml(xml)
 
@@ -553,7 +580,7 @@ export const parseFeed = (xml: string, options: ParseOptions = {}): ParsedFeed =
   }
 
   const items = itemNodes
-    .map((node) => normalizeItem(node, isAtom, baseUrl, aggregator))
+    .map((node) => normalizeItem(node, isAtom, baseUrl, aggregator, variant))
     .filter((item) => item.title || item.link)
 
   // Only re-sort when EVERY item is dated. Mixed feeds (e.g. CNN ships some

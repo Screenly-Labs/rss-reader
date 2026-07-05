@@ -12,7 +12,7 @@ import type { FeedItem } from '../../../src/parse'
 // never strands a cached page.
 
 interface FeedResponse {
-  feed?: { id: string; title: string; category: string }
+  feed?: { id: string; title: string; category: string; variant?: string }
   title?: string
   items?: FeedItem[]
   error?: boolean
@@ -325,6 +325,8 @@ interface FeedResponse {
     // <title> is sometimes ugly (Google News "site:reuters.com when:1d ...",
     // CBS "Home - cbsnews.com"). SSR already seeded feedTitle from the registry.
     if (data.feed?.title) feedTitle = data.feed.title
+    // Bespoke feeds (e.g. 'comic') get their own CSS treatment via the stage.
+    if (stage) stage.dataset.variant = data.feed?.variant ?? ''
 
     const imaged = items.filter((item) => item.image).length
     mode = imaged / items.length >= IMAGE_FEED_THRESHOLD ? 'story' : 'list'

@@ -12,11 +12,19 @@
 
 export type FeedCategory = 'general' | 'tech' | 'sports' | 'visual' | 'longform'
 
+// A feed whose items need bespoke parsing/rendering beyond the generic pipeline.
+// 'comic' (xkcd) carries the strip as the item's <img> and the joke in that
+// image's title/alt text — so the parser lifts that text into the summary and
+// the client shows the strip whole on light paper with a caption band, rather
+// than cropping it under the dark photo scrim. Most feeds set no variant.
+export type FeedVariant = 'comic'
+
 export interface Feed {
   id: string
   title: string
   url: string
   category: FeedCategory
+  variant?: FeedVariant
 }
 
 export const FEEDS: Feed[] = [
@@ -182,6 +190,15 @@ export const FEEDS: Feed[] = [
     title: 'PetaPixel — Photography',
     url: 'https://petapixel.com/feed/',
     category: 'visual'
+  },
+  // Webcomic: the strip is the payload and the alt/title text is the joke — see
+  // FeedVariant. Rendered whole on paper with a caption band (variant 'comic').
+  {
+    id: 'xkcd',
+    title: 'xkcd',
+    url: 'https://xkcd.com/rss.xml',
+    category: 'visual',
+    variant: 'comic'
   },
 
   // ---- Long-form / slow journalism ---------------------------------------
