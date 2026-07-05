@@ -110,8 +110,8 @@ once webfonts settle.
 
 The single source of truth: `{ id, title, url, category }`. Ids are the public
 config contract (keep them short/stable). To add a feed: append an entry,
-confirm it parses, done. Categories: `general` (US-centric news), `tech`,
-`visual` (Media-RSS imagery), `longform` (slow journalism).
+confirm it parses, done. Categories: `general` (US + European news), `tech`,
+`sports`, `visual` (Media-RSS imagery), `longform` (slow journalism).
 
 ## Commands (Bun only, no npm/npx)
 
