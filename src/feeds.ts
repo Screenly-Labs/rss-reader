@@ -10,7 +10,7 @@
 // petapixel) carry their imagery inside content:encoded/description HTML rather
 // than media:* tags — the parser's image fallback chain handles that.
 
-export type FeedCategory = 'general' | 'tech' | 'visual' | 'longform'
+export type FeedCategory = 'general' | 'tech' | 'sports' | 'visual' | 'longform'
 
 export interface Feed {
   id: string
@@ -20,7 +20,7 @@ export interface Feed {
 }
 
 export const FEEDS: Feed[] = [
-  // ---- General news (US-centric) -----------------------------------------
+  // ---- General news (US) --------------------------------------------------
   { id: 'npr', title: 'NPR — Top Stories', url: 'https://feeds.npr.org/1001/rss.xml', category: 'general' },
   {
     id: 'cbs',
@@ -46,12 +46,19 @@ export const FEEDS: Feed[] = [
     url: 'https://abcnews.go.com/abcnews/topstories',
     category: 'general'
   },
-  // Reuters retired its official RSS feeds; the Google News proxy is the
-  // reliable way to surface Reuters wire copy. It is text-forward (no media).
+  { id: 'cnn', title: 'CNN — Top Stories', url: 'http://rss.cnn.com/rss/cnn_topstories.rss', category: 'general' },
+  { id: 'cnn-world', title: 'CNN — World', url: 'http://rss.cnn.com/rss/cnn_world.rss', category: 'general' },
   {
-    id: 'reuters',
-    title: 'Reuters — US',
-    url: 'https://news.google.com/rss/search?q=site:reuters.com+when:1d&hl=en-US&gl=US&ceid=US:en',
+    id: 'nbc',
+    title: 'NBC News — Top Stories',
+    url: 'https://feeds.nbcnews.com/nbcnews/public/news',
+    category: 'general'
+  },
+  { id: 'pbs', title: 'PBS NewsHour', url: 'https://www.pbs.org/newshour/feeds/rss/headlines', category: 'general' },
+  {
+    id: 'guardian-us',
+    title: 'The Guardian — US',
+    url: 'https://www.theguardian.com/us-news/rss',
     category: 'general'
   },
   { id: 'bbc-top', title: 'BBC News — Top Stories', url: 'http://feeds.bbci.co.uk/news/rss.xml', category: 'general' },
@@ -105,6 +112,32 @@ export const FEEDS: Feed[] = [
     category: 'general'
   },
 
+  // ---- Europe (English-language) ------------------------------------------
+  {
+    id: 'guardian-world',
+    title: 'The Guardian — World',
+    url: 'https://www.theguardian.com/world/rss',
+    category: 'general'
+  },
+  {
+    id: 'spiegel',
+    title: 'Der Spiegel — International',
+    url: 'https://www.spiegel.de/international/index.rss',
+    category: 'general'
+  },
+  {
+    id: 'elpais',
+    title: 'El País — English',
+    url: 'https://feeds.elpais.com/mrss-s/pages/ep/site/english.elpais.com/portada',
+    category: 'general'
+  },
+  {
+    id: 'france24',
+    title: 'France 24 — English',
+    url: 'https://www.france24.com/en/rss',
+    category: 'general'
+  },
+
   // ---- Technology ---------------------------------------------------------
   {
     id: 'hacker-news',
@@ -119,6 +152,23 @@ export const FEEDS: Feed[] = [
     url: 'https://feeds.arstechnica.com/arstechnica/index',
     category: 'tech'
   },
+
+  // ---- Sports -------------------------------------------------------------
+  // US
+  { id: 'cbs-sports', title: 'CBS Sports', url: 'https://www.cbssports.com/rss/headlines/', category: 'sports' },
+  { id: 'yahoo-sports', title: 'Yahoo Sports', url: 'https://sports.yahoo.com/rss/', category: 'sports' },
+  // ESPN's RSS is text-only (no media tags, no in-body <img>), so its slides
+  // show headline + body over a blurred fill rather than a hero image.
+  { id: 'espn', title: 'ESPN — Top Headlines', url: 'https://www.espn.com/espn/rss/news', category: 'sports' },
+  // Europe
+  { id: 'bbc-sport', title: 'BBC Sport', url: 'http://feeds.bbci.co.uk/sport/rss.xml', category: 'sports' },
+  {
+    id: 'guardian-football',
+    title: 'The Guardian — Football',
+    url: 'https://www.theguardian.com/football/rss',
+    category: 'sports'
+  },
+  { id: 'sky-sports', title: 'Sky Sports', url: 'https://www.skysports.com/rss/12040', category: 'sports' },
 
   // ---- Visual / Media RSS -------------------------------------------------
   {

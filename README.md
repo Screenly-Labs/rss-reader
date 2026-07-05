@@ -21,8 +21,9 @@ Curated, vetted public feeds (edit `src/feeds.ts`):
 
 | Category   | Feeds |
 | ---------- | ----- |
-| General    | NPR, CBS News, The New York Times, Fox News, ABC News, Reuters (US), BBC World |
+| General    | NPR, CBS News, NYT, Fox News, ABC News, CNN, NBC News, PBS NewsHour, The Guardian (US/World), BBC, Der Spiegel International, El País (English), France 24 |
 | Tech       | Hacker News, The Verge, Ars Technica |
+| Sports     | CBS Sports, Yahoo Sports, ESPN, BBC Sport, The Guardian Football, Sky Sports |
 | Visual     | NASA Image of the Day, PetaPixel |
 | Long-form  | Longreads |
 
