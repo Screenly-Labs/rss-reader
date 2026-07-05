@@ -399,7 +399,17 @@ interface FeedResponse {
     stage?.style.setProperty('--rotate-ms', `${rotateMs}ms`)
   }
 
+  // On a Screenly player the viewer is already a Screenly customer, so the
+  // promotional Screenly badge is removed. The 'screenly-viewer' token in the
+  // user agent marks these devices; every other browser keeps the badge.
+  const removeScreenlyBranding = (): void => {
+    if (navigator.userAgent.includes('screenly-viewer')) {
+      document.querySelector('.brand')?.remove()
+    }
+  }
+
   const init = (): void => {
+    removeScreenlyBranding()
     readConfig()
     fetchFeed()
     window.addEventListener('resize', () => {
