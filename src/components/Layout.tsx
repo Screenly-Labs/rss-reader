@@ -51,7 +51,7 @@ const Layout = (props: LayoutProps) => html`<!DOCTYPE html>
   <html lang="en">
     <head>
       <meta charset="utf-8" />
-      <title>Screenly RSS Reader</title>
+      <title>${props.feedTitle ? `${props.feedTitle} — Screenly RSS Reader` : 'Screenly RSS Reader'}</title>
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <meta name="description" content="A full-screen RSS / Media RSS reader for digital signage." />
       <!-- Unversioned to match the @font-face URLs in main.css, so the preload
