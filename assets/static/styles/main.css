@@ -107,6 +107,8 @@ body {
 .stage {
   position: relative;
   inline-size: 100vw;
+  block-size: 100vh;
+  /* biome-ignore lint/suspicious/noDuplicateProperties: progressive-enhancement fallback -- 100vh for engines below the svh floor (~2018 players), svh where supported */
   block-size: 100svh;
   overflow: hidden;
   display: grid;
@@ -591,4 +593,22 @@ body {
       transform: translateY(0);
     }
   }
+}
+
+/* =========================================================================
+   Degraded mode — old/weak signage players (html.legacy set by the inline gate
+   in Layout.tsx). Assume the device can't afford animation; drop it entirely.
+   All motion here is gated behind prefers-reduced-motion: no-preference with no
+   base opacity:0, so killing it leaves every element at its visible resting
+   state -- no reveal mirror is needed.
+   ========================================================================= */
+html.legacy *,
+html.legacy *::before,
+html.legacy *::after {
+  /* biome-ignore lint/complexity/noImportantStyles: kill-switch must override the entrance animation rules */
+  animation: none !important;
+  /* biome-ignore lint/complexity/noImportantStyles: kill-switch must override any transition */
+  transition: none !important;
+  /* biome-ignore lint/complexity/noImportantStyles: release GPU layer hints on weak devices */
+  will-change: auto !important;
 }
