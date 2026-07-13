@@ -10,10 +10,11 @@
    orientations; the per-item fit is finished in main.ts.
    ========================================================================= */
 
-/* Webfonts (@font-face) and the standardized footer badge (.brand) come from
-   @screenly-labs/signage-kit — build.ts prepends styles/fonts.css + styles/brand.css
-   to this file before down-leveling. This file keeps the app's own tokens, reset,
-   fluid root, and "The Wire" component styles. */
+/* Webfonts (@font-face) come from @screenly-labs/signage-kit — build.ts prepends
+   styles/fonts.css to this file before down-leveling. The Screenly badge stays in
+   the rail (see .brand below), not the kit's fixed corner badge, because a QR
+   lockup owns the bottom-right corner here. This file keeps the app's own tokens,
+   reset, fluid root, and "The Wire" component styles. */
 
 :root {
   --font-display: "Bricolage Grotesque", "Hanken Grotesk", system-ui, sans-serif;
@@ -120,6 +121,23 @@ body {
   color: var(--wire);
   font-weight: 700;
   white-space: nowrap;
+}
+/* Screenly badge — carried in the rail (not the kit's fixed corner badge): a QR
+   "scan to read" lockup owns the bottom-right corner here. Kept as `.brand` so
+   the shared removeScreenlyBranding() hides it on Screenly players. */
+.brand {
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding-inline-start: clamp(0.7rem, 2vmin, 1.6rem);
+  margin-inline-start: clamp(0.7rem, 2vmin, 1.6rem);
+  border-inline-start: 1px solid var(--hairline);
+  opacity: 0.85;
+}
+.brand img {
+  block-size: clamp(0.7rem, 1vmin + 0.5rem, 1.4rem);
+  inline-size: auto;
+  display: block;
 }
 /* Transmission line: a track on the rail's bottom edge that fills amber over
    each rotation interval (set in motion below). */
