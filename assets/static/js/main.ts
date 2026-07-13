@@ -1,3 +1,6 @@
+// Side-effect import: installs the replaceChildren shim for the older-browser
+// degraded mode. Must stay first so the shim is in place before any render.
+import './polyfills'
 import qrcode from 'qrcode-generator'
 import { hostLabel, largestFit, relativeTime } from './render'
 // The wire contract is defined once in the worker's parser. `import type` is
