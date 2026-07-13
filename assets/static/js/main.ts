@@ -2,6 +2,10 @@
 // degraded mode (shared across all apps). Must stay first so the shim is in
 // place before any render.
 import '@screenly-labs/signage-kit/polyfills'
+// On a Screenly player the viewer is already a customer, so the promotional
+// Screenly badge (.brand) is removed; every other browser keeps it. Shared with
+// every signage app via the kit.
+import { removeScreenlyBranding } from '@screenly-labs/signage-kit/branding'
 import qrcode from 'qrcode-generator'
 import { hostLabel, largestFit, relativeTime } from './render'
 // The wire contract is defined once in the worker's parser. `import type` is
@@ -409,15 +413,6 @@ interface FeedResponse {
     if (Number.isFinite(seconds) && seconds > 0) rotateMs = seconds * 1000
     // Drives the transmission line's fill duration (CSS animation).
     stage?.style.setProperty('--rotate-ms', `${rotateMs}ms`)
-  }
-
-  // On a Screenly player the viewer is already a Screenly customer, so the
-  // promotional Screenly badge is removed. The 'screenly-viewer' token in the
-  // user agent marks these devices; every other browser keeps the badge.
-  const removeScreenlyBranding = (): void => {
-    if (navigator.userAgent.includes('screenly-viewer')) {
-      document.querySelector('.brand')?.remove()
-    }
   }
 
   const init = (): void => {
