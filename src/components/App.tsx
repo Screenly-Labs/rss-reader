@@ -30,7 +30,7 @@ const App = ({ env, feedId, feedTitle, v }: AppProps) => {
           </span>
           <span class="rail__pos" id="rail-pos" aria-hidden="true" />
           <a
-            class="rail__brand"
+            class="brand"
             href="https://www.screenly.io"
             target="_blank"
             rel="noopener noreferrer"
