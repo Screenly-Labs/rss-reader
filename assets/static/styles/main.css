@@ -596,19 +596,11 @@ body {
 }
 
 /* =========================================================================
-   Degraded mode — old/weak signage players (html.legacy set by the inline gate
-   in Layout.tsx). Assume the device can't afford animation; drop it entirely.
-   All motion here is gated behind prefers-reduced-motion: no-preference with no
-   base opacity:0, so killing it leaves every element at its visible resting
-   state -- no reveal mirror is needed.
+   Degraded mode — old/weak signage players (html.legacy set by the shared gate
+   in Layout.tsx). The generic animation/transition/will-change kill-switch is
+   prepended by @screenly-labs/signage-kit at build time (includeDegraded), so it
+   lives in the package, not here. This app has no app-specific html.legacy rules;
+   all motion is gated behind prefers-reduced-motion: no-preference with no base
+   opacity:0, so the shared kill-switch alone leaves every element at its visible
+   resting state.
    ========================================================================= */
-html.legacy *,
-html.legacy *::before,
-html.legacy *::after {
-  /* biome-ignore lint/complexity/noImportantStyles: kill-switch must override the entrance animation rules */
-  animation: none !important;
-  /* biome-ignore lint/complexity/noImportantStyles: kill-switch must override any transition */
-  transition: none !important;
-  /* biome-ignore lint/complexity/noImportantStyles: release GPU layer hints on weak devices */
-  will-change: auto !important;
-}
