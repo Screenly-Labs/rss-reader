@@ -10,43 +10,10 @@
    orientations; the per-item fit is finished in main.ts.
    ========================================================================= */
 
-@font-face {
-  font-family: "Bricolage Grotesque";
-  font-weight: 200 800;
-  font-style: normal;
-  font-optical-sizing: auto;
-  font-display: swap;
-  src: url("/static/fonts/bricolage-grotesque-latin-standard-normal.woff2") format("woff2");
-  unicode-range:
-    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-  font-family: "Hanken Grotesk";
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
-  src: url("/static/fonts/hanken-grotesk-latin-wght-normal.woff2") format("woff2");
-  unicode-range:
-    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-  font-family: "Space Mono";
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-  src: url("/static/fonts/space-mono-latin-400-normal.woff2") format("woff2");
-  unicode-range:
-    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-  font-family: "Space Mono";
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-  src: url("/static/fonts/space-mono-latin-700-normal.woff2") format("woff2");
-  unicode-range:
-    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
+/* Webfonts (@font-face) and the standardized footer badge (.brand) come from
+   @screenly-labs/signage-kit — build.ts prepends styles/fonts.css + styles/brand.css
+   to this file before down-leveling. This file keeps the app's own tokens, reset,
+   fluid root, and "The Wire" component styles. */
 
 :root {
   --font-display: "Bricolage Grotesque", "Hanken Grotesk", system-ui, sans-serif;
@@ -153,20 +120,6 @@ body {
   color: var(--wire);
   font-weight: 700;
   white-space: nowrap;
-}
-.rail__brand {
-  flex: none;
-  display: flex;
-  align-items: center;
-  padding-inline-start: clamp(0.7rem, 2vmin, 1.6rem);
-  margin-inline-start: clamp(0.7rem, 2vmin, 1.6rem);
-  border-inline-start: 1px solid var(--hairline);
-  opacity: 0.85;
-}
-.rail__brand img {
-  block-size: clamp(0.7rem, 1vmin + 0.5rem, 1.4rem);
-  inline-size: auto;
-  display: block;
 }
 /* Transmission line: a track on the rail's bottom edge that fills amber over
    each rotation interval (set in motion below). */
