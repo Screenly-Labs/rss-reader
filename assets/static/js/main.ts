@@ -5,7 +5,10 @@ import '@screenly-labs/signage-kit/polyfills'
 // On a Screenly player the viewer is already a customer, so the promotional
 // Screenly badge (.brand) is removed; every other browser keeps it. Shared with
 // every signage app via the kit.
+import { trackPlayer } from '@screenly-labs/signage-kit/analytics'
+import { PLAYER_PROFILE_PATH } from '@screenly-labs/signage-kit/analytics-server'
 import { removeScreenlyBranding } from '@screenly-labs/signage-kit/branding'
+import { detectPlayer } from '@screenly-labs/signage-kit/profiler'
 import qrcode from 'qrcode-generator'
 import { hostLabel, largestFit, relativeTime } from './render'
 // The wire contract is defined once in the worker's parser. `import type` is
@@ -415,9 +418,38 @@ interface FeedResponse {
     stage?.style.setProperty('--rotate-ms', `${rotateMs}ms`)
   }
 
+
+  // Report which player is showing this, and which feed it is showing.
+  //
+  // The feed is the whole configuration of this app, and it already rides on every event
+  // as `source`. Sending it at user scope as well is what turns "222,041 feed_loaded
+  // events" into "how many SCREENS show CNN", because one GA4 user is one screen and a
+  // screen keeps its feed.
+  //
+  // Prefers the Worker's profile over the browser's: only a request carries
+  // X-Requested-With, the one signal that names an Android WebView vendor, and the
+  // endpoint is no-store so it describes THIS screen rather than whichever one missed the
+  // page cache. Falls back to the browser profile when the fetch fails, which on an
+  // unattended screen is normal rather than an error.
+  const reportPlayer = async (): Promise<void> => {
+    let profile = detectPlayer()
+    try {
+      const response = await fetch(PLAYER_PROFILE_PATH, { cache: 'no-store' })
+      if (response.ok) profile = await response.json()
+    } catch {
+      // Keep the browser-built profile.
+    }
+    trackPlayer(profile, {
+      app: 'rss-reader',
+      config: { source: feedId || 'unknown', source_title: feedTitle || 'unknown' }
+    })
+  }
+
   const init = (): void => {
     removeScreenlyBranding()
     readConfig()
+    // After readConfig(), so feedId/feedTitle are populated.
+    reportPlayer()
     fetchFeed()
     window.addEventListener('resize', () => {
       clearTimeout(resizeTimer)
