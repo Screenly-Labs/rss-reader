@@ -1,4 +1,6 @@
 import { html, raw } from 'hono/html'
+import { analyticsBootstrap } from '@screenly-labs/signage-kit/analytics-bootstrap'
+import { PLAYER_PROFILE_PATH } from '@screenly-labs/signage-kit/analytics-server'
 import { GATE } from '@screenly-labs/signage-kit/gate'
 import type { Child } from 'hono/jsx'
 
@@ -20,32 +22,24 @@ const sentryScript = (id?: string) =>
     ? html`<script src="https://js.sentry-cdn.com/${id}.min.js" crossorigin="anonymous"></script>`
     : ''
 
-// Inline a value as a JS object literal inside a <script>. JSON.stringify alone
-// is not safe here: a value containing `</script>` would close the tag early,
-// and U+2028/U+2029 are valid in JSON but not in JS string literals. Escaping
-// them as \u… keeps the JSON valid while neutralizing both hazards, so a feed
-// title can never break out of the script.
-const SCRIPT_UNSAFE = /[<>\u2028\u2029]/g
-const jsonForScript = (value: unknown): string =>
-  JSON.stringify(value).replace(
-    SCRIPT_UNSAFE,
-    (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`
-  )
-
 // The `source`/`source_title` on the config call ride along on GA4's automatic
 // page_view, so a visit is attributed to its feed (main.ts tags the same pair on
 // every later event).
+// The kit bootstrap owns the config call so it can pin client_id to the Screenly device id,
+// making one screen one GA4 user: GA4's own client_id lives in the _ga cookie and these players
+// largely boot with fresh storage, so it churns. The feed pair is passed as configParams and
+// merged under client_id, so the feed attribution above is unchanged.
 const gaScript = (id?: string, feedId?: string, feedTitle?: string) =>
   id
     ? html`
       <script async src="https://www.googletagmanager.com/gtag/js?id=${id}"></script>
-      <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-
-        gtag('config', '${id}', ${raw(jsonForScript({ source: feedId ?? '', source_title: feedTitle ?? '' }))});
-      </script>`
+      ${raw(
+        analyticsBootstrap({
+          gaId: id,
+          profilePath: PLAYER_PROFILE_PATH,
+          configParams: { source: feedId ?? '', source_title: feedTitle ?? '' }
+        })
+      )}`
     : ''
 
 const Layout = (props: LayoutProps) => html`<!DOCTYPE html>
